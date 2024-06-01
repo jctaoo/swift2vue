@@ -1,7 +1,11 @@
 VStack {
-  Text("Hello World!").font(.largeTitle).foregroundStyle(.blue)
+  Text("你好!").font(.largeTitle).foregroundStyle(.green)
 
-  Button("Click Me") {
+  Button("哈哈哈") {
+    print("Hello World")
+  })
+
+  Button("哈哈哈") {
     print("Hello World")
   })
 }.padding(200).background(Color.red)

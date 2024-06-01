@@ -263,4 +263,9 @@ fn main() {
 
     // write to index.html
     std::fs::write("index.html", result).expect("Unable to write file");
+    println!("Generated index.html")
 }
+
+
+// Q: how to get cargo run's running time, i wanna the time the cargo run take
+// A: car
