@@ -1,0 +1,87 @@
+div#app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+
+    justify-content: center;
+    align-items: center;
+}
+
+div.vstack {
+    display: inline-flex;
+    flex-direction: column;
+}
+
+div[data-background="red"] {
+    background-color: red;
+}
+
+*[data-padding="200"] {
+    padding: 200px;
+}
+
+span.text {
+    font-size: 24px;
+    font-family: Arial, sans-serif;
+}
+
+span[data-foregroundStyle="blue"] {
+    color: blue;
+}
+
+span[data-foregroundStyle="green"] {
+    color: green;
+}
+
+span[data-foregroundStyle="red"] {
+    color: red;
+}
+
+/* const fontPreExp = {
+  largeTitle: "largeTitle",
+  title: "title",
+  title2: "title2",
+  title3: "title3",
+  headline: "headline",
+  subheadline: "subheadline",
+  body: "body",
+}; */
+
+span.text[data-font="largeTitle"] {
+    font-size: 34px;
+}
+
+span.text[data-font="title"] {
+    font-size: 28px;
+}
+
+span.text[data-font="title2"] {
+    font-size: 22px;
+}
+
+span.text[data-font="title3"] {
+    font-size: 20px;
+}
+
+span.text[data-font="headline"] {
+    font-size: 17px;
+}
+
+span.text[data-font="subheadline"] {
+    font-size: 15px;
+}
+
+span.text[data-font="body"] {
+    font-size: 13px;
+}
+
+button.button {
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}

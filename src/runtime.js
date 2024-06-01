@@ -21,7 +21,7 @@ function makeCollector() {
 const collector = makeCollector();
 
 class View {
-  static TAG = "view";
+  static TAG = "div";
   _padding = null;
   _background = null;
   _foregroundStyle = null;
@@ -65,9 +65,9 @@ class View {
 
   renderParam() {
     return [
-      this._padding ? `padding="${this._padding}"` : "",
-      this._background ? `background="${this._background}"` : "",
-      this._foregroundStyle ? `foregroundStyle="${this._foregroundStyle}"` : "",
+      this._padding ? `data-padding="${this._padding}"` : "",
+      this._background ? `data-background="${this._background}"` : "",
+      this._foregroundStyle ? `data-foregroundStyle="${this._foregroundStyle}"` : "",
     ].filter(Boolean).join(" ");
   }
 
@@ -90,7 +90,11 @@ ${this.renderStartTag()}${children}</${this.constructor.TAG}>
 }
 
 class VStack extends View {
-  static TAG = "v-stack";
+  static TAG = "div";
+
+  renderParam() {
+    return super.renderParam() + " class=\"vstack\"";
+  }
 
   constructor(builder) {
     super();
@@ -99,7 +103,7 @@ class VStack extends View {
 }
 
 class Text extends View {
-  static TAG = "swift-text";
+  static TAG = "span";
   _font = null;
 
   constructor(value) {
@@ -112,13 +116,21 @@ class Text extends View {
     return this;
   }
 
+  renderParam() {
+    return [
+      super.renderParam(),
+      this._font ? `data-font="${this._font}"` : "",
+      `class="text"`,
+    ].filter(Boolean).join(" ");
+  }
+
   renderContent() {
     return this.value;
   }
 }
 
 class Button extends View {
-  static TAG = "swift-button";
+  static TAG = "button";
 
   constructor(value, onClick) {
     super();
@@ -128,6 +140,13 @@ class Button extends View {
 
   renderContent() {
     return this.value;
+  }
+
+  renderParam() {
+    return [
+      super.renderParam(),
+      `class="button"`,
+    ].filter(Boolean).join(" ");
   }
 
   rendererScript() {
