@@ -1,173 +1,240 @@
-let ENABLE_COLLECT = false;
+let ENABLE_COLLECT = 0;
+let GENETAED_IDS = new Set();
 
 function uniqueId() {
-  // more complex
-  return Math.random().toString(36).substr(2, 9);
+    const code = 'a' + Math.floor(Math.random() * 1000);
+    if (GENETAED_IDS.has(code)) {
+        return uniqueId();
+    }
+    GENETAED_IDS.add(code);
+    return code;
 }
 
 function makeCollector() {
-  let collect = [];
-  return {
-    push: (value) => {
-      collect.push(value);
-    },
-    consume: () => {
-      const result = [...collect];
-      collect = [];
-      return result;
-    },
-  }
+    let collect = [];
+    return {
+        push: (value) => {
+            collect.push(value);
+        },
+        consume: () => {
+            const result = [...collect];
+            collect = [];
+            return result;
+        },
+    };
 }
-const collector = makeCollector();
 
-class View {
-  static TAG = "div";
-  _padding = null;
-  _background = null;
-  _foregroundStyle = null;
-  children = [];
+let currentCollector = null;
 
-  constructor() {
-    if (ENABLE_COLLECT) {
-      collector.push(this);
+class $View {
+    static TAG = "div";
+    _padding = null;
+    _background = null;
+    _foregroundStyle = null;
+    children = [];
+
+    constructor() {
+        this.id = uniqueId();
+        if (ENABLE_COLLECT > 0) {
+            currentCollector?.push(this);
+            if (!!currentCollector) {
+                // console.log("inserted: ", this.constructor.name)
+            } else {
+                // console.log("no collector", this.constructor.name)
+            }
+        } else {
+            // console.log("no collector", this.constructor.name)
+        }
     }
-  }
 
-  _constructBuilder(builder) {
-    ENABLE_COLLECT = true;
-    builder();
-    ENABLE_COLLECT = false;
+    _constructBuilder(builder) {
+        let oldCollector = currentCollector;
+        ENABLE_COLLECT ++;
+        currentCollector = makeCollector();
+        builder();
+        ENABLE_COLLECT --;
 
-    this.children = collector.consume();
-    // setTimeout(() => {
-    //   this.children = collector.consume();
-    // }, 0);
-  }
+        this.children = currentCollector.consume();
+        currentCollector = oldCollector;
 
-  padding(value) {
-    this._padding = value;
-    return this;
-  }
+        // console.log("collected children: ", this.children, this.constructor.name)
 
-  background(value) {
-    this._background = value;
-    return this;
-  }
+        // setTimeout(() => {
+        //   this.children = collector.consume();
+        // }, 0);
+    }
 
-  foregroundStyle(value) {
-    this._foregroundStyle = value;
-    return this;
-  }
+    padding(value) {
+        this._padding = value;
+        return this;
+    }
 
-  rendererScript() {
-    return this.children.map((child) => child.rendererScript()).join("\n");
-  }
+    background(value) {
+        this._background = value;
+        return this;
+    }
 
-  renderParam() {
-    return [
-      this._padding ? `data-padding="${this._padding}"` : "",
-      this._background ? `data-background="${this._background}"` : "",
-      this._foregroundStyle ? `data-foregroundStyle="${this._foregroundStyle}"` : "",
-    ].filter(Boolean).join(" ");
-  }
+    foregroundStyle(value) {
+        this._foregroundStyle = value;
+        return this;
+    }
 
-  renderStartTag() {
-    const param = this.renderParam();
-    const paramString = param ? ` ${param}` : "";
-    return `<${this.constructor.TAG}${paramString}>`;
-  }
+    rendererScript() {
+        return this.children.map((child) => child.rendererScript()).join("\n");
+    }
 
-  renderContent() {
-    return "\n" + this.children.map((child) => child.render()).map(i => `  ${i}`).join("\n") + "\n";
-  }
+    renderParam() {
+        return [
+            this._padding ? `data-padding="${this._padding}"` : "",
+            this._background ? `data-background="${this._background}"` : "",
+            this._foregroundStyle
+                ? `data-foregroundStyle="${this._foregroundStyle}"`
+                : "",
+        ]
+            .filter(Boolean)
+            .join(" ");
+    }
 
-  render() {
-    const children = this.renderContent();
-    return `
+    renderStartTag() {
+        const param = this.renderParam();
+        const paramString = param ? ` ${param}` : "";
+        return `<${this.constructor.TAG}${paramString}>`;
+    }
+
+    renderContent() {
+        // console.log(this.children)
+        return (
+            "\n" +
+            this.children
+                .map((child) => child.render())
+                .map((i) => `  ${i}`)
+                .join("\n") +
+            "\n"
+        );
+    }
+
+    render() {
+        const children = this.renderContent();
+        return `
 ${this.renderStartTag()}${children}</${this.constructor.TAG}>
     `.trim();
-  }
+    }
 }
 
-class VStack extends View {
-  static TAG = "div";
+class $VStack extends $View {
+    static TAG = "div";
 
-  renderParam() {
-    return super.renderParam() + " class=\"vstack\"";
-  }
+    renderParam() {
+        return super.renderParam() + ' class="vstack"';
+    }
 
-  constructor(builder) {
-    super();
-    this._constructBuilder(builder);
-  }
+    constructor(builder) {
+        super();
+        this._constructBuilder(builder);
+    }
 }
 
-class Text extends View {
-  static TAG = "span";
-  _font = null;
+class $HStack extends $View {
+    static TAG = "div";
 
-  constructor(value) {
-    super();
-    this.value = value;
-  }
+    renderParam() {
+        return super.renderParam() + ' class="hstack"';
+    }
 
-  font(value) {
-    this._font = value;
-    return this;
-  }
-
-  renderParam() {
-    return [
-      super.renderParam(),
-      this._font ? `data-font="${this._font}"` : "",
-      `class="text"`,
-    ].filter(Boolean).join(" ");
-  }
-
-  renderContent() {
-    return this.value;
-  }
+    constructor(builder) {
+        super();
+        this._constructBuilder(builder);
+    }
 }
 
-class Button extends View {
-  static TAG = "button";
+class $Text extends $View {
+    static TAG = "span";
+    _font = null;
 
-  constructor(value, onClick) {
-    super();
-    this.value = value;
-    this.onClick = onClick;
-  }
+    constructor(value) {
+        super();
+        this.value = value;
+    }
 
-  renderContent() {
-    return this.value;
-  }
+    font(value) {
+        this._font = value;
+        return this;
+    }
 
-  renderParam() {
-    return [
-      super.renderParam(),
-      `class="button"`,
-    ].filter(Boolean).join(" ");
-  }
+    renderParam() {
+        return [
+            super.renderParam(),
+            this._font ? `data-font="${this._font}"` : "",
+            `class="text"`,
+        ]
+            .filter(Boolean)
+            .join(" ");
+    }
 
-  rendererScript() {
-    return `(${this.onClick})()`;
-  }
+    renderContent() {
+        return this.value;
+    }
+}
+
+class $Button extends $View {
+    static TAG = "button";
+
+    constructor(value, onClick) {
+        super();
+        this.value = value;
+        this.onClick = onClick;
+    }
+
+    renderContent() {
+        return this.value;
+    }
+
+    renderParam() {
+        return [super.renderParam(), `class="button"`, `@click="${this.id}OnClick"`].filter(Boolean).join(" ");
+    }
+
+    rendererScript() {
+        const fn = `
+            ${this.id}OnClick: () => {
+                (${this.onClick})();
+            },
+        `
+        return fn;
+    }
+}
+
+function VStack(builder) {
+    return new $VStack(builder);
+}
+
+function HStack(builder) {
+    return new $HStack(builder);
+}
+
+function Text(value) {
+    return new $Text(value);
+}
+
+function Button(value, onClick) {
+    return new $Button(value, onClick);
 }
 
 const fontPreExp = {
-  largeTitle: "largeTitle",
-  title: "title",
-  title2: "title2",
-  title3: "title3",
-  headline: "headline",
-  subheadline: "subheadline",
-  body: "body",
+    largeTitle: "largeTitle",
+    title: "title",
+    title2: "title2",
+    title3: "title3",
+    headline: "headline",
+    subheadline: "subheadline",
+    body: "body",
 };
 
 const Color = {
-  red: "red",
-  blue: "blue",
-  green: "green",
-}
+    red: "red",
+    blue: "blue",
+    green: "green",
+    yellow: "yellow",
+};
 
 const foregroundStylePreExp = Color;
+const foregroundColorPreExp = Color;

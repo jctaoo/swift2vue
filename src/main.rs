@@ -1,22 +1,39 @@
 static SOURCE: &'static str = include_str!("test.swift");
 static RUNTIME: &'static str = include_str!("runtime.js");
 
-use std::fmt::Write;
+use std::{any::Any, fmt::Write};
 
 use colored::Colorize;
 use deno_core::{serde_json, serde_v8, v8, JsRuntime, RuntimeOptions};
 use tree_sitter::Parser;
 
+fn inline_str(s: &str) -> String {
+    s.replace("\n", "")
+}
+
 #[allow(dead_code)]
 fn log_node(node: &tree_sitter::Node, level: u32) {
-    let content = node.utf8_text(SOURCE.as_bytes()).unwrap().blue();
+    let content = node.utf8_text(SOURCE.as_bytes()).unwrap();
+    // content without new line
+    let content = inline_str(content).blue();
+
     // log self
     println!(
-        "{:indent$}{} --> {content}",
+        "{:indent$}- 节点类型: {} --> {content}",
         "",
         node.kind(),
-        indent = level as usize * 2
+        indent = level as usize * 3
     );
+
+    // log all attributes
+    println!(
+        "{:indent$}  节点信息: {} id={}",
+        "",
+        format!("{:?}", node),
+        node.id(),
+        indent = level as usize * 3
+    );
+
     for i in 0..node.child_count() {
         log_node(&node.child(i).unwrap(), level + 1);
     }
@@ -52,13 +69,13 @@ impl State {
         let tab = cursor.depth();
         let mut skip_child = false;
 
-        // println!(
-        //     "{:indent$}{} --> {}",
-        //     "",
-        //     kind,
-        //     node_source.blue(),
-        //     indent = tab as usize * 2
-        // );
+        println!(
+            "{:indent$}{} --> {}",
+            "",
+            kind,
+            node_source.blue(),
+            indent = tab as usize * 2
+        );
 
         match kind {
             "call_expression" => {
@@ -76,7 +93,7 @@ impl State {
                     let parent_kind = cursor.node().parent().unwrap().kind();
 
                     if parent_kind == "call_expression" {
-                        out.push_str(format!("new {node_source}").as_str());
+                        out.push_str(format!("{node_source}").as_str());
                         self.navigation_expression_level
                             .push(self.temp_navigation_expression_level);
                         self.temp_navigation_expression_level = 0;
@@ -222,6 +239,8 @@ fn main() {
     let tree = parser.parse(SOURCE, None).unwrap();
     let root_node = tree.root_node().child(0).unwrap();
 
+    log_node(&root_node, 0);
+
     let mut cursor = root_node.walk();
     let mut output = String::new();
 
@@ -232,15 +251,24 @@ fn main() {
     // std::fs::write("output.js", output).expect("Unable to write file");
 
     let mid_code = output;
+    // println!("{}", mid_code);
 
     let script = format!(
         r#"
         {RUNTIME}
         const root = {mid_code}
 
-        root.render()
+        const out = {{
+            render: root.render(),
+            script: root.rendererScript()
+        }};
+
+        out
         "#
     );
+
+    // write out.js
+    // std::fs::write("out.js", &script).expect("Unable to write file");
 
     let mut runtime = JsRuntime::new(RuntimeOptions {
         extensions: vec![],
@@ -255,17 +283,14 @@ fn main() {
     let deserialized_value = serde_v8::from_v8::<serde_json::Value>(scope, local);
 
     let result = deserialized_value.unwrap();
-    let result = result.as_str().unwrap();
+    let render_str = result["render"].as_str().unwrap();
+    let script_str = result["script"].as_str().unwrap();
 
     // read template.html and replace <%SLOT%>
     let template = std::fs::read_to_string("template.html").unwrap();
-    let result = template.replace("<%SLOT%>", result);
+    let result = template.replace("<%SLOT%>", render_str).replace("<%SCRIPT%>", script_str);
 
     // write to index.html
     std::fs::write("index.html", result).expect("Unable to write file");
     println!("Generated index.html")
 }
-
-
-// Q: how to get cargo run's running time, i wanna the time the cargo run take
-// A: car

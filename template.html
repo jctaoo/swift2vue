@@ -16,8 +16,15 @@
   <script>
     const { createApp, ref } = Vue
 
+    const print = console.log;
+
+    const fns = {
+      <%SCRIPT%>
+    }
+
     createApp({
       setup() {
+        return { ...fns }
       }
     }).mount('#app')
   </script>

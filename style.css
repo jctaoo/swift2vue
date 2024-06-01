@@ -7,15 +7,39 @@ div#app {
     align-items: center;
 }
 
+
+button.button {
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    background: unset;
+    transition: all 0.3s;
+}
+
+/* hover */
+button.button:hover {
+    opacity: 0.8;
+}
+
+/* active */
+button.button:active {
+    opacity: 0.6;
+}
+
 div.vstack {
     display: inline-flex;
     flex-direction: column;
+    align-items: center;
 }
 
-div[data-background="red"] {
-    background-color: red;
+div.hstack {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
 }
-
 *[data-padding="200"] {
     padding: 200px;
 }
@@ -25,16 +49,47 @@ span.text {
     font-family: Arial, sans-serif;
 }
 
-span[data-foregroundStyle="blue"] {
+*[data-background="red"] {
+    background-color: red !important;
+}
+
+*[data-background="blue"] {
+    background-color: blue !important;
+}
+
+*[data-background="green"] {
+    background-color: green !important;
+}
+
+*[data-background="black"] {
+    background-color: black !important;
+}
+
+*[data-background="yellow"] {
+    background-color: yellow !important;
+    color: black !important;
+}
+
+/* button has data-background color should be white */
+button[data-background] {
+    color: white;
+}
+
+
+*[data-foregroundStyle="blue"] {
     color: blue;
 }
 
-span[data-foregroundStyle="green"] {
+*[data-foregroundStyle="green"] {
     color: green;
 }
 
-span[data-foregroundStyle="red"] {
+*[data-foregroundStyle="red"] {
     color: red;
+}
+
+*[data-foregroundStyle="black"] {
+    color: black;
 }
 
 /* const fontPreExp = {
@@ -73,15 +128,4 @@ span.text[data-font="subheadline"] {
 
 span.text[data-font="body"] {
     font-size: 13px;
-}
-
-button.button {
-    padding: 10px 20px;
-    margin: 10px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-    font-weight: bold;
 }
