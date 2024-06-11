@@ -54,7 +54,6 @@ struct Button_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             BasicButton()
-            ListButton()
             ContextMenuButton()
             StylingButton()
         }

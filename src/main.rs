@@ -1,9 +1,12 @@
+use std::borrow::BorrowMut;
+
 use paser::{State, SOURCE};
 
-mod paser;
-mod view;
-mod utils;
 mod component;
+mod paser;
+mod template;
+mod utils;
+mod view;
 
 fn main() {
     use tree_sitter::Parser;
@@ -25,65 +28,50 @@ fn main() {
     let mut state = State::new();
     state.handle_source(&mut cursor);
 
-    for st in state.struct_list {
-        // log current struct
-        let st = st.borrow().clone();
-        println!("got struct info: {:?}", st);
+    // using ./output
+    let out_dir = std::path::Path::new("./output");
 
-        let view = view::ViewParser::from_struct(st);
-        let cmp_code = view.generate_component_code();
-        println!("{}", cmp_code);
+    // if the dir is not empty, remove all files
+    if out_dir.exists() {
+        let _ = std::fs::remove_dir_all(out_dir);
     }
 
+    // create the dir
+    std::fs::create_dir(out_dir).unwrap();
 
-    // println!("index.html generated");
+    let mut view_imports = Vec::new();
+    let mut index_template = String::new();
 
-    // state.handle_node_cursor(&mut cursor, &mut output);
+    for st in state.struct_list {
+        let st = st.borrow().clone();
+        println!("{:?}", st);
 
-    // write output to file
-    // std::fs::write("output.js", output).expect("Unable to write file");
+        let st_name = st.name.clone();
 
-    // let mid_code = output;
-    // // println!("{}", mid_code);
+        if st.inheritance == Some("View".to_string()) {
+            let view = view::ViewParser::from_struct(st);
+            let cmp_code = view.generate_component_code();
 
-    // let script = format!(
-    //     r#"
-    //     {RUNTIME}
-    //     const root = {mid_code}
+            let file_name = format!("{}/{}.js", out_dir.display(), st_name);
+            std::fs::write(file_name, cmp_code).unwrap();
 
-    //     const out = {{
-    //         render: root.render(),
-    //         script: root.rendererScript()
-    //     }};
+            view_imports.push(st_name);
+        } else if st.inheritance == Some("PreviewProvider".to_string()) {
+            let mut transformed = st.clone();
+            transformed.inheritance = Some("View".to_string());
 
-    //     out
-    //     "#
-    // );
+            let previews = transformed.members.get("previews").expect("No previews found");
+            transformed.members.insert("body".to_string(), previews.clone());
+            transformed.members.remove("previews");
 
-    // write out.js
-    // std::fs::write("out.js", &script).expect("Unable to write file");
+            let mut view = view::ViewParser::from_struct(transformed);
+            let template = view.generate_template();
 
-    // let mut runtime = JsRuntime::new(RuntimeOptions {
-    //     extensions: vec![],
-    //     ..Default::default()
-    // });
-    // let global = runtime.execute_script("<generate>", script).unwrap();
+            index_template = template;
+        }
+    }
 
-    // let scope = &mut runtime.handle_scope();
-    // let local = v8::Local::new(scope, global);
-    // // Deserialize a `v8` object into a Rust type using `serde_v8`,
-    // // in this case deserialize to a JSON `Value`.
-    // let deserialized_value = serde_v8::from_v8::<serde_json::Value>(scope, local);
-
-    // let result = deserialized_value.unwrap();
-    // let render_str = result["render"].as_str().unwrap();
-    // let script_str = result["script"].as_str().unwrap();
-
-    // // read template.html and replace <%SLOT%>
-    // let template = std::fs::read_to_string("template.html").unwrap();
-    // let result = template.replace("<%SLOT%>", render_str).replace("<%SCRIPT%>", script_str);
-
-    // // write to index.html
-    // std::fs::write("index.html", result).expect("Unable to write file");
-    // println!("Generated index.html")
+    let index_html = template::generate_template_html(view_imports, index_template);
+    let file_name = format!("{}/index.html", out_dir.display());
+    std::fs::write(file_name, index_html).unwrap();
 }

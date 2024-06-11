@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { createApp } from 'vue'
+      {{#each imports}}
+      import {{this}} from './{{this}}.js'
+      {{/each}}
+
+      createApp({
+        components: {
+          {{#each imports}}
+          {{this}},
+          {{/each}}
+        },
+        template: `
+          {{{ index_template }}}
+        `
+      }).mount('#app')
+    </script>
+  </body>
+</html>

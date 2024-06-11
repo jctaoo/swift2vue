@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tree_sitter::Node;
 
+use crate::utils::log_node;
 #[allow(unused)]
 use crate::utils::log_node_tree;
 
@@ -131,6 +132,8 @@ impl<'a> State<'a> {
 
             return self.handle_struct_nodes(cursor);
         }
+
+        // log_node(&node, cursor.depth());
 
         return true;
     }

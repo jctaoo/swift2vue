@@ -67,7 +67,7 @@ impl<'a> ViewParser<'a> {
 }
 
 impl<'a> ViewParser<'a> {
-    fn generate_template(&mut self) -> String {
+    pub fn generate_template(&mut self) -> String {
         if self.struct_info.inheritance != Some("View".to_string()) {
             return "".to_string();
         }

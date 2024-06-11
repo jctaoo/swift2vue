@@ -25,3 +25,11 @@ struct BasicButton: View {
 
     func register() { print("注册") }
 }
+
+struct Button_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            BasicButton()
+        }
+    }
+}
