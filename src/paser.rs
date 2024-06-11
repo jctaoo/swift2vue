@@ -2,13 +2,17 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tree_sitter::Node;
 
+use crate::utils::log_node;
 #[allow(unused)]
 use crate::utils::log_node_tree;
 
 #[derive(Debug, Clone)]
 pub enum StructMember<'a> {
     Function(Node<'a>),
-    Property { node: Node<'a>, modifier: Option<String> }
+    Property {
+        node: Node<'a>,
+        modifier: Option<String>,
+    },
 }
 
 #[derive(Debug, Default, Clone)]
@@ -23,13 +27,15 @@ pub struct State<'a> {
     source: String,
     struct_def_level: usize,
     pub struct_list: Vec<Rc<RefCell<StructInfo<'a>>>>,
-    current_struct: Option<Rc<RefCell<StructInfo<'a>>>>
+    current_struct: Option<Rc<RefCell<StructInfo<'a>>>>,
+    pub verbose: bool,
 }
 
 impl<'a> State<'a> {
-    pub fn new(source: String) -> Self {
+    pub fn new(source: String, verbose: bool) -> Self {
         let mut instance = Self::default();
         instance.source = source;
+        instance.verbose = verbose;
         instance
     }
 }
@@ -68,14 +74,21 @@ impl<'a> State<'a> {
                 if child.kind() == "pattern" {
                     let idnode = child.child(0).unwrap();
                     if idnode.kind() == "simple_identifier" {
-                        name = idnode.utf8_text(self.source.as_bytes()).unwrap().to_string();
+                        name = idnode
+                            .utf8_text(self.source.as_bytes())
+                            .unwrap()
+                            .to_string();
                     }
                 } else if child.kind() == "computed_property" {
                     let call_node = child.child(1).unwrap().child(0).unwrap();
                     if call_node.kind() == "call_expression" {
                         var_node = Some(call_node);
                     }
-                } else if child.prev_sibling().map(|x| x.kind() == "=").unwrap_or(false) {
+                } else if child
+                    .prev_sibling()
+                    .map(|x| x.kind() == "=")
+                    .unwrap_or(false)
+                {
                     let call_node = child;
                     var_node = Some(call_node);
                 } else if child.kind() == "modifiers" {
@@ -83,7 +96,12 @@ impl<'a> State<'a> {
                     let attribute_node = child.child(0).unwrap();
                     if attribute_node.kind() == "attribute" {
                         let modifier_node = attribute_node.child(1).unwrap();
-                        modifier = Some(modifier_node.utf8_text(self.source.as_bytes()).unwrap().to_string());
+                        modifier = Some(
+                            modifier_node
+                                .utf8_text(self.source.as_bytes())
+                                .unwrap()
+                                .to_string(),
+                        );
                     }
                 } else {
                     continue;
@@ -91,7 +109,10 @@ impl<'a> State<'a> {
             }
 
             if let Some(var_node) = var_node {
-                let var = StructMember::Property { node: var_node, modifier };
+                let var = StructMember::Property {
+                    node: var_node,
+                    modifier,
+                };
                 struct_info.members.insert(name, var);
             }
 
@@ -114,7 +135,9 @@ impl<'a> State<'a> {
             }
 
             if let Some(fn_node) = fn_node {
-                struct_info.members.insert(name, StructMember::Function(fn_node));
+                struct_info
+                    .members
+                    .insert(name, StructMember::Function(fn_node));
             }
 
             return false;
@@ -127,6 +150,9 @@ impl<'a> State<'a> {
 
     fn handle_node(&mut self, cursor: &mut tree_sitter::TreeCursor<'a>) -> bool {
         let node = cursor.node();
+        if self.verbose {
+            log_node(&node, cursor.depth(), &self.source);
+        }
 
         if self.struct_def_level > 0 {
             return self.handle_struct_nodes(cursor);
@@ -141,8 +167,6 @@ impl<'a> State<'a> {
 
             return self.handle_struct_nodes(cursor);
         }
-
-        // log_node(&node, cursor.depth());
 
         return true;
     }
@@ -176,5 +200,4 @@ impl<'a> State<'a> {
 
         self.handle_node_post(cursor);
     }
-
 }

@@ -11,4 +11,4 @@ if (fs.existsSync(outdir)) {
   fs.rmSync(outdir, { recursive: true });
 }
 
-generate(content, outdir);
+generate(content, outdir, true);

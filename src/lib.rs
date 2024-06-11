@@ -14,10 +14,11 @@ static STYLES_DIR: Dir = include_dir!("./styles");
 
 #[allow(unused)]
 #[napi]
-fn generate(source: String, outdir: String) {
+fn generate(source: String, outdir: String, verbose: Option<bool>) {
     use tree_sitter::Parser;
 
     let lang = tree_sitter_swift::language();
+    let verbose = verbose.unwrap_or(false);
 
     let mut parser = Parser::new();
     parser
@@ -31,7 +32,7 @@ fn generate(source: String, outdir: String) {
 
     let mut cursor = root_node.walk();
 
-    let mut state = State::new(source.clone());
+    let mut state = State::new(source.clone(), verbose);
     state.handle_source(&mut cursor);
 
     // using ./output
