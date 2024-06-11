@@ -1,7 +1,14 @@
 const { generate } = require("./index");
 const fs = require("fs");
+const path = require("path");
 
 // read ./fixtures/Button.swift
 const content = fs.readFileSync("./fixtures/Button.swift", "utf8");
+const outdir = path.resolve(__dirname, "output");
 
-generate(content, "./output2");
+// rm output directory
+if (fs.existsSync(outdir)) {
+  fs.rmSync(outdir, { recursive: true });
+}
+
+generate(content, outdir);

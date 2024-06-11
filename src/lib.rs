@@ -36,10 +36,22 @@ fn generate(source: String, outdir: String) {
 
     // using ./output
     let out_dir = std::path::Path::new(outdir.as_str());
+    if out_dir.is_relative() {
+        panic!("Output directory must be an absolute path");
+    }
 
-    // if the dir is not empty, remove all files
+    // if the dir is not empty, check is a empty dir or not
     if out_dir.exists() {
-        let _ = std::fs::remove_dir_all(out_dir);
+        let dir = std::fs::read_dir(out_dir).unwrap();
+        let mut is_empty = true;
+        for _ in dir {
+            is_empty = false;
+            break;
+        }
+
+        if !is_empty {
+            panic!("Output directory is not empty");
+        }
     }
 
     // create the dir
