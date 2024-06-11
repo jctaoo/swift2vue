@@ -30,10 +30,18 @@ fn common_compute(node: &tree_sitter::Node) -> Option<(String, String)> {
   let arg_node = node.child(0).unwrap();
   if arg_node.kind() == "value_argument_label" {
     let value_node = node.child(2).unwrap();
-    let value_content = value_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
     let arg_content = arg_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
 
-    return Some((arg_content, value_content));
+    if arg_node.kind().ends_with("_literal") {
+      let content_node = arg_node.child(1).unwrap();
+      assert_eq!(content_node.kind(), "line_str_text");
+      let content = content_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
+      return Some((arg_content, content));
+    } else {
+      let value_content = value_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
+      let arg_content = format!("v-bind:{}", arg_content);
+      return Some((arg_content, value_content));
+    }
   };
 
   None

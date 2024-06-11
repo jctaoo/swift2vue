@@ -136,7 +136,7 @@ impl<'a> ViewParser<'a> {
         return defs + "\n" + &exported_code;
     }
 
-    pub fn generate_component_code(mut self) -> String {
+    pub fn generate_component_code(mut self, builtin: Vec<String>) -> String {
         if self.struct_info.inheritance != Some("View".to_string()) {
             return "".to_string();
         }
@@ -154,10 +154,21 @@ impl<'a> ViewParser<'a> {
         //   template: `<div>Count is: {{ count }}</div>`
         // }
 
+        let builtin_imports = builtin
+            .iter()
+            .map(|name| format!("import {} from './{}.js'", name, name))
+            .collect::<Vec<String>>()
+            .join("\n");
+        let components = builtin.join(", ");
+
         format!(r#"
 import {{ ref }} from 'vue'
+{builtin_imports}
 
 export default {{
+    components: {{
+        {components}
+    }},
     setup() {{
 {setup_code}
     }},
@@ -173,7 +184,8 @@ export default {{
         let root_id = self.view_tree.root_node_id().unwrap();
         self.handle_view_tree_node(root_id, &mut code);
 
-        prettify_xml(code)
+        // prettify_xml(code)
+        code
     }
 
     fn handle_view_tree_node(&self, id: &NodeId, code: &mut String) {

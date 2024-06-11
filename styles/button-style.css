@@ -1,0 +1,28 @@
+.DefaultButtonStyle {
+  /* default style, like iOS */
+  color: #007aff;
+
+  /* hover */
+  cursor: pointer;
+
+  &:hover {
+    color: #0056b3;
+  }
+
+  &:active {
+    color: #004b9e;
+  }
+}
+
+.PlainButtonStyle {
+  color: #212020;
+  cursor: pointer;
+
+  &:hover {
+    color: #000000;
+  }
+
+  &:active {
+    color: #000000;
+  }
+}

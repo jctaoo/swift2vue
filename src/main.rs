@@ -38,7 +38,23 @@ fn main() {
     std::fs::create_dir(out_dir).unwrap();
 
     let mut view_imports = Vec::new();
+    let mut builtin_imports = Vec::new();
     let mut index_template = String::new();
+
+    // handle runtime
+    let runtime_dir = std::path::Path::new("./runtime");
+    // add runtime dir's content to view_imports and copy to output dir
+    for entry in std::fs::read_dir(runtime_dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+        let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
+
+        builtin_imports.push(base_name.clone());
+
+        let out_file = format!("{}/{}", out_dir.display(), file_name);
+        std::fs::copy(path, out_file).unwrap();
+    }
 
     for st in state.struct_list {
         let st = st.borrow().clone();
@@ -48,7 +64,7 @@ fn main() {
 
         if st.inheritance == Some("View".to_string()) {
             let view = view::ViewParser::from_struct(st);
-            let cmp_code = view.generate_component_code();
+            let cmp_code = view.generate_component_code(builtin_imports.clone());
 
             let file_name = format!("{}/{}.js", out_dir.display(), st_name);
             std::fs::write(file_name, cmp_code).unwrap();
@@ -69,21 +85,6 @@ fn main() {
         }
     }
 
-    // handle runtime
-    let runtime_dir = std::path::Path::new("./runtime");
-    // add runtime dir's content to view_imports and copy to output dir
-    for entry in std::fs::read_dir(runtime_dir).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-        let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
-
-        view_imports.push(base_name.clone());
-
-        let out_file = format!("{}/{}", out_dir.display(), file_name);
-        std::fs::copy(path, out_file).unwrap();
-    }
-
     // copy styles
     let styles_dir = std::path::Path::new("./styles");
     let mut styles: Vec<String> = Vec::new();
@@ -102,6 +103,8 @@ fn main() {
         let out_file = format!("{}/{}", styles_out_dir, file_name);
         std::fs::copy(path, out_file).unwrap();
     }
+
+    view_imports.extend(builtin_imports);
 
     let index_html = template::generate_template_html(view_imports, styles, index_template);
     let file_name = format!("{}/index.html", out_dir.display());

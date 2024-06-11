@@ -1,0 +1,41 @@
+.group {
+  display: flex;
+  flex-direction: column;
+
+  width: 100vw;
+  height: 100vh;
+
+  /* center */
+  justify-content: center;
+  align-items: center;
+}
+
+.vstack {
+  display: flex;
+  flex-direction: column;
+  gap: .5em;
+}
+
+.hstack {
+  display: flex;
+  flex-direction: row;
+  gap: .5em;
+}
+
+.text {
+  /* using mono */
+  font-family: 'Courier New', Courier, monospace;
+}
+
+button.button {
+  /* using mono */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 17px;
+
+  /* clear style */
+  border: none;
+  outline: none;
+  background: none;
+
+  transition: all .2s ease-in-out;
+}

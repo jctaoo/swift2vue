@@ -4,18 +4,17 @@ struct BasicButton: View {
     var body: some View {
         VStack {
             Button(action: signIn) {
-                Text("登录")
+                Text("登录1")
                     .padding()
             }
-            Button("登录", action: signIn)
+            Button("登录2", action: signIn)
 
             HStack {
-                Button("登录", action: signIn)
+                Button("登录3", action: signIn)
                 Button("注册", action: register)
             }
             .buttonStyle(PlainButtonStyle())
             .padding()
-            .background(.blue)
         }
     }
 
