@@ -72,7 +72,11 @@ impl<'a> ViewParser<'a> {
             return "".to_string();
         }
 
-        if let Some(StructMember::Property(body)) = self.struct_info.members.get("body") {
+        if let Some(StructMember::Property {
+            node: body,
+            modifier: _,
+        }) = self.struct_info.members.get("body")
+        {
             let mut cursor = body.walk();
             self.handle_struct(&mut cursor);
         }
@@ -82,6 +86,49 @@ impl<'a> ViewParser<'a> {
         println!("{}", fmt_tree);
 
         return self.generate_code_from_tree();
+    }
+
+    fn handle_fn(&self, node: &tree_sitter::Node) -> String {
+        let mut code = String::new();
+        assert_eq!(node.kind(), "statements");
+
+        for i in 0..node.child_count() {
+            let child = node.child(i).unwrap();
+            let child_code = child.utf8_text(SOURCE.as_bytes()).unwrap();
+
+            match child.kind() {
+                "assignment" => {
+                    let target = child.child(0).unwrap();
+                    let target = target.utf8_text(SOURCE.as_bytes()).unwrap();
+                    if let Some(StructMember::Property { node: _, modifier }) =
+                        self.struct_info.members.get(target)
+                    {
+                        if modifier == &Some("State".to_string()) {
+                            let target = format!("{}.value", target);
+                            let op = child.child(1).unwrap();
+                            let op = op.utf8_text(SOURCE.as_bytes()).unwrap();
+                            let value = child.child(2).unwrap();
+                            let value = value.utf8_text(SOURCE.as_bytes()).unwrap();
+
+                            code.push_str(format!("{} {op} {};\n", target, value).as_str());
+                        }
+                    } else {
+                        code.push_str(child_code);
+                        code.push_str("\n");
+                    }
+                }
+                _ => {
+                    code.push_str(child_code);
+                    code.push_str("\n");
+                }
+            }
+        }
+
+        // TODO:
+        // handle swift interpolated_expression like "Hello, \(name)!"
+        // try handle this using regex
+
+        code.to_string()
     }
 
     fn generate_setup_code(&self) -> String {
@@ -98,28 +145,47 @@ impl<'a> ViewParser<'a> {
             }
 
             let member_code = match value {
-                StructMember::Property(node) => {
+                StructMember::Property { node, modifier } => {
                     let var_name = key;
                     exported_identifier.push(var_name.clone());
                     let var_code = node.utf8_text(SOURCE.as_bytes()).unwrap();
 
-                    format!("const {var_name} = {var_code};", var_name = var_name, var_code = var_code)
+                    if modifier == &Some("State".to_string()) {
+                        format!(
+                            "const {var_name} = ref({var_code});",
+                            var_name = var_name,
+                            var_code = var_code
+                        )
+                    } else {
+                        format!(
+                            "const {var_name} = {var_code};",
+                            var_name = var_name,
+                            var_code = var_code
+                        )
+                    }
                 }
                 StructMember::Function(node) => {
+                    // log_node_tree(&node, 0);
                     let fn_name = key;
                     exported_identifier.push(fn_name.clone());
 
-                    let fn_code = node.utf8_text(SOURCE.as_bytes()).unwrap();
+                    let fn_code = self.handle_fn(node);
 
                     let code_with_indent = fn_code
                         .split("\n")
-                        .map(|line| {
-                            format!("{:indent$}{}", "", line, indent = 12)
-                        })
+                        .map(|x| x.trim())
+                        .filter(|x| x.len() > 0)
+                        .map(|line| format!("{:indent$}{}", "", line, indent = 12))
                         .collect::<Vec<String>>()
                         .join("\n");
 
-                    format!("const {fn_name} = () => {{\n{code_with_indent}\n{:indent$}}};", "", indent = 8)
+                    format!(
+                        "const {fn_name} = () => {{\n{code_with_indent}\n{:indent$}}};",
+                        "",
+                        indent = 8
+                    )
+                    .trim_end()
+                    .to_string()
                 }
             };
 
@@ -161,7 +227,8 @@ impl<'a> ViewParser<'a> {
             .join("\n");
         let components = builtin.join(", ");
 
-        format!(r#"
+        format!(
+            r#"
 import {{ ref }} from 'vue'
 {builtin_imports}
 
@@ -174,7 +241,10 @@ export default {{
     }},
     template: `{template_code}`
 }}
-        "#).trim().to_string()
+        "#
+        )
+        .trim()
+        .to_string()
     }
 
     /// generate html code from view tree
@@ -245,7 +315,7 @@ export default {{
             "simple_identifier" => {
                 let identifier_text = child.utf8_text(SOURCE.as_bytes()).unwrap();
                 Some(identifier_text.to_string())
-            },
+            }
             _ => None,
         }
     }
@@ -276,7 +346,9 @@ export default {{
                                         continue;
                                     }
 
-                                    if let Some((key, value)) = crate::component::compute_modifier(tag.clone(), &arg_node) {
+                                    if let Some((key, value)) =
+                                        crate::component::compute_modifier(tag.clone(), &arg_node)
+                                    {
                                         // println!("{}: {}", key, value);
                                         if key.as_str() == "child" {
                                             view_node.str_content = Some(value);
@@ -290,7 +362,6 @@ export default {{
                                 break;
                             }
                         }
-
                     }
                 }
                 // println!("{}", "====================".on_yellow());
@@ -328,7 +399,11 @@ export default {{
 
             let arg_value = if let Some(arg_node) = arg_node {
                 if arg_node.kind() == "prefix_expression" {
-                    arg_node.child(1).unwrap().utf8_text(SOURCE.as_bytes()).unwrap()
+                    arg_node
+                        .child(1)
+                        .unwrap()
+                        .utf8_text(SOURCE.as_bytes())
+                        .unwrap()
                 } else {
                     arg_node.utf8_text(SOURCE.as_bytes()).unwrap()
                 }
@@ -336,10 +411,16 @@ export default {{
                 ""
             };
 
-            let related_call_exp = self.navigation_component_node_id.unwrap();
-            let related_tree_id = self.id_to_tree_id.get(&related_call_exp).unwrap();
-            let realted_view_node = self.view_tree.get_mut(related_tree_id).unwrap();
-            realted_view_node.data_mut().modifier.insert(call_suffix_name.to_string(), arg_value.to_string());
+            // TODO: ignroe contextMenu for now
+            if call_suffix_name != "contextMenu" {
+                let related_call_exp = self.navigation_component_node_id.unwrap();
+                let related_tree_id = self.id_to_tree_id.get(&related_call_exp).unwrap();
+                let realted_view_node = self.view_tree.get_mut(related_tree_id).unwrap();
+                realted_view_node
+                    .data_mut()
+                    .modifier
+                    .insert(call_suffix_name.to_string(), arg_value.to_string());
+            }
         }
 
         if node.kind() == "call_suffix" {

@@ -10,7 +10,7 @@ use crate::utils::log_node_tree;
 #[derive(Debug, Clone)]
 pub enum StructMember<'a> {
     Function(Node<'a>),
-    Property(Node<'a>),
+    Property { node: Node<'a>, modifier: Option<String> }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -60,6 +60,7 @@ impl<'a> State<'a> {
 
             let mut name = String::new();
             let mut var_node: Option<Node> = None;
+            let mut modifier: Option<String> = None;
 
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
@@ -76,13 +77,21 @@ impl<'a> State<'a> {
                 } else if child.prev_sibling().map(|x| x.kind() == "=").unwrap_or(false) {
                     let call_node = child;
                     var_node = Some(call_node);
+                } else if child.kind() == "modifiers" {
+                    // TODO: we only support one attribute for now
+                    let attribute_node = child.child(0).unwrap();
+                    if attribute_node.kind() == "attribute" {
+                        let modifier_node = attribute_node.child(1).unwrap();
+                        modifier = Some(modifier_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string());
+                    }
                 } else {
                     continue;
                 }
             }
 
             if let Some(var_node) = var_node {
-                struct_info.members.insert(name, StructMember::Property(var_node));
+                let var = StructMember::Property { node: var_node, modifier };
+                struct_info.members.insert(name, var);
             }
 
             return false;

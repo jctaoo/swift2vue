@@ -14,11 +14,10 @@ function getButtonStyleClass(buttonStyle) {
 export default {
   components: { SwiftCommon },
   name: "Button",
-  props: ['action'],
+  props: ['action', 'buttonStyle'],
   setup(props) {
-    const buttonStyle = inject('buttonStyle');
-
-    const buttonStyleClass = buttonStyle ? getButtonStyleClass(buttonStyle) : '';
+    const buttonStyle = props.buttonStyle ?? inject('buttonStyle', 'default')
+    const buttonStyleClass = getButtonStyleClass(buttonStyle);
 
     const onClick = () => {
       if (props.action) {

@@ -8,6 +8,8 @@
   /* center */
   justify-content: center;
   align-items: center;
+
+  gap: 1em;
 }
 
 .vstack {
@@ -38,4 +40,39 @@ button.button {
   background: none;
 
   transition: all .2s ease-in-out;
+}
+
+form.form {
+  /* using mono */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 17px;
+
+  /* clear style */
+  border: none;
+  outline: none;
+  background: none;
+
+  transition: all .2s ease-in-out;
+}
+
+input.text-field {
+  /* using mono */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 17px;
+
+  /* clear style */
+  border: none;
+  outline: none;
+  background: none;
+
+  transition: all .2s ease-in-out;
+
+  /* ios style */
+  background-color: #f2f2f7;
+  padding: 10px;
+  border-radius: 10px;
+
+  &:focus {
+    background-color: #e5e5ea;
+  }
 }

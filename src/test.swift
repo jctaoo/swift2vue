@@ -1,34 +1,74 @@
 import SwiftUI
 
+struct CounterButton: View {
+    @State var count: Int = 0
+
+    var body: some View {
+        Button(action: increment) {
+            Text("点击次数: \(count)")
+        }
+    }
+
+    func increment() { count += 1 }
+}
+
 struct BasicButton: View {
     var body: some View {
         VStack {
             Button(action: signIn) {
-                Text("登录1")
-                    .padding()
+                Text("登录")
             }
-            Button("登录2", action: signIn)
-
-            HStack {
-                Button("登录3", action: signIn)
-                Button("注册", action: register)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .padding()
+            Button("登录", action: signIn)
         }
     }
 
-    var count = 0
+    func signIn() { print("已登录") }
+}
+
+
+struct ContextMenuButton: View {
+    var body: some View {
+        Form {
+            TextField("用户名", text: $username)
+        }
+        .contextMenu {
+            Button("剪切", action: cut)
+            Button("复制", action: copy)
+            Button("粘贴", action: paste)
+        }
+    }
+
+    @State var username: String = ""
+    @State var tmp: String = ""
+
+    func cut() {
+        tmp = username
+        username = ""
+    }
+    func copy() { tmp = username }
+    func paste() { username += tmp }
+}
+
+struct StylingButton: View {
+    var body: some View {
+        HStack {
+            Button("登录", action: signIn)
+            Button("注册", action: register)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
 
     func signIn() { print("已登录") }
-
-    func register() { print("注册") }
+    func register() { print("注册新账号") }
 }
 
 struct Button_Previews: PreviewProvider {
     static var previews: some View {
         Group {
+            CounterButton()
             BasicButton()
+            ContextMenuButton()
+            StylingButton()
         }
     }
 }

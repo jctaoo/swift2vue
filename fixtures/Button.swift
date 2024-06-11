@@ -1,5 +1,17 @@
 import SwiftUI
 
+struct CounterButton: View {
+    @State var count: Int = 0
+
+    var body: some View {
+        Button(action: increment) {
+            Text("点击次数: \(count)")
+        }
+    }
+
+    func increment() { count += 1 }
+}
+
 struct BasicButton: View {
     var body: some View {
         VStack {
@@ -53,6 +65,7 @@ struct StylingButton: View {
 struct Button_Previews: PreviewProvider {
     static var previews: some View {
         Group {
+            CounterButton()
             BasicButton()
             ContextMenuButton()
             StylingButton()
