@@ -391,6 +391,7 @@ dependencies = [
  "colored",
  "handlebars",
  "id_tree",
+ "lazy_static",
  "napi",
  "napi-build",
  "napi-derive",

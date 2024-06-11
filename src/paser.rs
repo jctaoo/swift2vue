@@ -1,5 +1,3 @@
-pub static SOURCE: &'static str = include_str!("test.swift");
-
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tree_sitter::Node;
@@ -22,14 +20,17 @@ pub struct StructInfo<'a> {
 
 #[derive(Debug, Default)]
 pub struct State<'a> {
+    source: String,
     struct_def_level: usize,
     pub struct_list: Vec<Rc<RefCell<StructInfo<'a>>>>,
     current_struct: Option<Rc<RefCell<StructInfo<'a>>>>
 }
 
 impl<'a> State<'a> {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(source: String) -> Self {
+        let mut instance = Self::default();
+        instance.source = source;
+        instance
     }
 }
 
@@ -41,7 +42,7 @@ impl<'a> State<'a> {
 
         if struct_info.name.is_empty() {
             if node.kind() == "type_identifier" {
-                let name = node.utf8_text(SOURCE.as_bytes()).unwrap();
+                let name = node.utf8_text(self.source.as_bytes()).unwrap();
                 struct_info.name = name.to_string();
                 return false;
             }
@@ -49,7 +50,7 @@ impl<'a> State<'a> {
 
         if struct_info.inheritance.is_none() {
             if node.kind() == "inheritance_specifier" {
-                let inheritance = node.utf8_text(SOURCE.as_bytes()).unwrap();
+                let inheritance = node.utf8_text(self.source.as_bytes()).unwrap();
                 struct_info.inheritance = Some(inheritance.to_string());
                 return false;
             }
@@ -67,7 +68,7 @@ impl<'a> State<'a> {
                 if child.kind() == "pattern" {
                     let idnode = child.child(0).unwrap();
                     if idnode.kind() == "simple_identifier" {
-                        name = idnode.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
+                        name = idnode.utf8_text(self.source.as_bytes()).unwrap().to_string();
                     }
                 } else if child.kind() == "computed_property" {
                     let call_node = child.child(1).unwrap().child(0).unwrap();
@@ -82,7 +83,7 @@ impl<'a> State<'a> {
                     let attribute_node = child.child(0).unwrap();
                     if attribute_node.kind() == "attribute" {
                         let modifier_node = attribute_node.child(1).unwrap();
-                        modifier = Some(modifier_node.utf8_text(SOURCE.as_bytes()).unwrap().to_string());
+                        modifier = Some(modifier_node.utf8_text(self.source.as_bytes()).unwrap().to_string());
                     }
                 } else {
                     continue;
@@ -104,7 +105,7 @@ impl<'a> State<'a> {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 if child.kind() == "simple_identifier" {
-                    name = child.utf8_text(SOURCE.as_bytes()).unwrap().to_string();
+                    name = child.utf8_text(self.source.as_bytes()).unwrap().to_string();
                 } else if child.kind() == "function_body" {
                     fn_node = Some(child.child(1).unwrap());
                 } else {

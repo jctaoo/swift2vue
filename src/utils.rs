@@ -1,4 +1,3 @@
-use crate::paser::SOURCE;
 use colored::Colorize;
 use xmltree::{Element, EmitterConfig};
 
@@ -21,8 +20,8 @@ pub fn inline_str(s: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn log_node(node: &tree_sitter::Node, level: u32) {
-  let content = node.utf8_text(SOURCE.as_bytes()).unwrap();
+pub fn log_node(node: &tree_sitter::Node, level: u32, source: &String) {
+  let content = node.utf8_text(source.as_bytes()).unwrap();
   // content without new line
   let content = inline_str(content).blue();
 
@@ -49,8 +48,8 @@ pub fn log_node(node: &tree_sitter::Node, level: u32) {
 }
 
 #[allow(dead_code)]
-pub fn log_node_tree(node: &tree_sitter::Node, level: u32) {
-  let content = node.utf8_text(SOURCE.as_bytes()).unwrap();
+pub fn log_node_tree(node: &tree_sitter::Node, level: u32, source: &String) {
+  let content = node.utf8_text(source.as_bytes()).unwrap();
   // content without new line
   let content = inline_str(content).blue();
 
@@ -72,6 +71,6 @@ pub fn log_node_tree(node: &tree_sitter::Node, level: u32) {
   );
 
   for i in 0..node.child_count() {
-    log_node_tree(&node.child(i).unwrap(), level + 1);
+    log_node_tree(&node.child(i).unwrap(), level + 1, source);
   }
 }

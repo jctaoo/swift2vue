@@ -1,4 +1,4 @@
-use paser::{State, SOURCE};
+use paser::State;
 
 mod component;
 mod paser;
@@ -9,7 +9,7 @@ use napi_derive::napi;
 
 #[allow(unused)]
 #[napi]
-fn generate() {
+fn generate(source: String) {
     use tree_sitter::Parser;
 
     let lang = tree_sitter_swift::language();
@@ -19,14 +19,14 @@ fn generate() {
         .set_language(&lang)
         .expect("Error loading Rust grammar");
 
-    let tree = parser.parse(SOURCE, None).unwrap();
+    let tree = parser.parse(source.clone(), None).unwrap();
     let root_node = tree.root_node();
 
     // log_node(&root_node, 0);
 
     let mut cursor = root_node.walk();
 
-    let mut state = State::new();
+    let mut state = State::new(source.clone());
     state.handle_source(&mut cursor);
 
     // using ./output
@@ -66,7 +66,7 @@ fn generate() {
         let st_name = st.name.clone();
 
         if st.inheritance == Some("View".to_string()) {
-            let view = view::ViewParser::from_struct(st);
+            let view = view::ViewParser::from_struct(st, source.clone());
             let cmp_code = view.generate_component_code(builtin_imports.clone());
 
             let file_name = format!("{}/{}.js", out_dir.display(), st_name);
@@ -81,7 +81,7 @@ fn generate() {
             transformed.members.insert("body".to_string(), previews.clone());
             transformed.members.remove("previews");
 
-            let mut view = view::ViewParser::from_struct(transformed);
+            let mut view = view::ViewParser::from_struct(transformed, source.clone());
             let template = view.generate_template();
 
             index_template = template;

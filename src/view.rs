@@ -4,7 +4,7 @@ use id_tree::{InsertBehavior, NodeId, Tree, TreeBuilder};
 
 #[allow(unused)]
 use crate::{
-    paser::{StructMember, SOURCE},
+    paser::{StructMember},
     utils::{log_node_tree, prettify_xml},
 };
 
@@ -36,6 +36,8 @@ impl ViewNode {
 }
 
 pub struct ViewParser<'a> {
+    source: String,
+
     struct_info: crate::paser::StructInfo<'a>,
     view_tree: Tree<ViewNode>,
 
@@ -52,8 +54,9 @@ pub struct ViewParser<'a> {
 }
 
 impl<'a> ViewParser<'a> {
-    pub fn from_struct(st: crate::paser::StructInfo<'a>) -> Self {
+    pub fn from_struct(st: crate::paser::StructInfo<'a>, source: String) -> Self {
         Self {
+            source,
             view_tree: TreeBuilder::new().build(),
             struct_info: st,
             in_call_expression: 0,
@@ -94,21 +97,21 @@ impl<'a> ViewParser<'a> {
 
         for i in 0..node.child_count() {
             let child = node.child(i).unwrap();
-            let child_code = child.utf8_text(SOURCE.as_bytes()).unwrap();
+            let child_code = child.utf8_text(self.source.as_bytes()).unwrap();
 
             match child.kind() {
                 "assignment" => {
                     let target = child.child(0).unwrap();
-                    let target = target.utf8_text(SOURCE.as_bytes()).unwrap();
+                    let target = target.utf8_text(self.source.as_bytes()).unwrap();
                     if let Some(StructMember::Property { node: _, modifier }) =
                         self.struct_info.members.get(target)
                     {
                         if modifier == &Some("State".to_string()) {
                             let target = format!("{}.value", target);
                             let op = child.child(1).unwrap();
-                            let op = op.utf8_text(SOURCE.as_bytes()).unwrap();
+                            let op = op.utf8_text(self.source.as_bytes()).unwrap();
                             let value = child.child(2).unwrap();
-                            let value = value.utf8_text(SOURCE.as_bytes()).unwrap();
+                            let value = value.utf8_text(self.source.as_bytes()).unwrap();
 
                             code.push_str(format!("{} {op} {};\n", target, value).as_str());
                         }
@@ -148,7 +151,7 @@ impl<'a> ViewParser<'a> {
                 StructMember::Property { node, modifier } => {
                     let var_name = key;
                     exported_identifier.push(var_name.clone());
-                    let var_code = node.utf8_text(SOURCE.as_bytes()).unwrap();
+                    let var_code = node.utf8_text(self.source.as_bytes()).unwrap();
 
                     if modifier == &Some("State".to_string()) {
                         format!(
@@ -313,7 +316,7 @@ export default {{
 
         match child.kind() {
             "simple_identifier" => {
-                let identifier_text = child.utf8_text(SOURCE.as_bytes()).unwrap();
+                let identifier_text = child.utf8_text(self.source.as_bytes()).unwrap();
                 Some(identifier_text.to_string())
             }
             _ => None,
@@ -347,7 +350,7 @@ export default {{
                                     }
 
                                     if let Some((key, value)) =
-                                        crate::component::compute_modifier(tag.clone(), &arg_node)
+                                        crate::component::compute_modifier(tag.clone(), &arg_node, &self.source)
                                     {
                                         // println!("{}: {}", key, value);
                                         if key.as_str() == "child" {
@@ -386,7 +389,7 @@ export default {{
             self.ignroe_nodes.push(last_navigation);
 
             let call_suffix_identifier = node.child(1).unwrap();
-            let call_suffix_name = call_suffix_identifier.utf8_text(SOURCE.as_bytes()).unwrap();
+            let call_suffix_name = call_suffix_identifier.utf8_text(self.source.as_bytes()).unwrap();
 
             let args_node = last_navigation.child(0).unwrap();
 
@@ -402,10 +405,10 @@ export default {{
                     arg_node
                         .child(1)
                         .unwrap()
-                        .utf8_text(SOURCE.as_bytes())
+                        .utf8_text(self.source.as_bytes())
                         .unwrap()
                 } else {
-                    arg_node.utf8_text(SOURCE.as_bytes()).unwrap()
+                    arg_node.utf8_text(self.source.as_bytes()).unwrap()
                 }
             } else {
                 ""
