@@ -1,25 +1,27 @@
-VStack {
-  Text("Button Demo")
-  HStack {
-    Button("Text Button") {
-      print("Text Button Clicked")
+import SwiftUI
+
+struct BasicButton: View {
+    var body: some View {
+        VStack {
+            Button(action: signIn) {
+                Text("登录")
+                    .padding()
+            }
+            Button("登录", action: signIn)
+
+            HStack {
+                Button("登录", action: signIn)
+                Button("注册", action: register)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding()
+            .background(.blue)
+        }
     }
 
-    Button("Background Button") {
-      print("Background Button Clicked")
-    }.background(Color.blue)
+    var count = 0
 
-    Button("Green Button") {
-      print("Green Button Clicked")
-    }.background(Color.green)
-  }
-  HStack {
-    Button("Red Text Btn") {
-      print("Red Text Btn Clicked")
-    }.foregroundStyle(.red)
+    func signIn() { print("已登录") }
 
-    Button("Blue Text Yellow Btn") {
-      print("Blue Text Yellow Btn Clicked")
-    }.foregroundStyle(.blue).background(Color.yellow)
-  }
+    func register() { print("注册") }
 }
