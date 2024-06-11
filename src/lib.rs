@@ -5,8 +5,11 @@ mod paser;
 mod template;
 mod utils;
 mod view;
+use napi_derive::napi;
 
-fn main() {
+#[allow(unused)]
+#[napi]
+fn generate() {
     use tree_sitter::Parser;
 
     let lang = tree_sitter_swift::language();
