@@ -4,7 +4,6 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tree_sitter::Node;
 
-use crate::utils::log_node;
 #[allow(unused)]
 use crate::utils::log_node_tree;
 
