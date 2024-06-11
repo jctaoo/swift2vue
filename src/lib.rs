@@ -7,9 +7,14 @@ mod utils;
 mod view;
 use napi_derive::napi;
 
+use include_dir::{include_dir, Dir};
+
+static RUNTIME_DIR: Dir = include_dir!("./runtime");
+static STYLES_DIR: Dir = include_dir!("./styles");
+
 #[allow(unused)]
 #[napi]
-fn generate(source: String) {
+fn generate(source: String, outdir: String) {
     use tree_sitter::Parser;
 
     let lang = tree_sitter_swift::language();
@@ -30,7 +35,7 @@ fn generate(source: String) {
     state.handle_source(&mut cursor);
 
     // using ./output
-    let out_dir = std::path::Path::new("./output");
+    let out_dir = std::path::Path::new(outdir.as_str());
 
     // if the dir is not empty, remove all files
     if out_dir.exists() {
@@ -44,19 +49,16 @@ fn generate(source: String) {
     let mut builtin_imports = Vec::new();
     let mut index_template = String::new();
 
-    // handle runtime
-    let runtime_dir = std::path::Path::new("./runtime");
     // add runtime dir's content to view_imports and copy to output dir
-    for entry in std::fs::read_dir(runtime_dir).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
+    for file in RUNTIME_DIR.files() {
+        let path = file.path();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
         let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
 
         builtin_imports.push(base_name.clone());
 
         let out_file = format!("{}/{}", out_dir.display(), file_name);
-        std::fs::copy(path, out_file).unwrap();
+        std::fs::write(out_file, file.contents());
     }
 
     for st in state.struct_list {
@@ -89,22 +91,20 @@ fn generate(source: String) {
     }
 
     // copy styles
-    let styles_dir = std::path::Path::new("./styles");
     let mut styles: Vec<String> = Vec::new();
     let styles_out_dir = format!("{}/styles", out_dir.display());
 
     std::fs::create_dir(&styles_out_dir).unwrap();
 
-    for entry in std::fs::read_dir(styles_dir).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
+    for file in STYLES_DIR.files() {
+        let path = file.path();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
         let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
 
         styles.push(base_name.clone());
 
         let out_file = format!("{}/{}", styles_out_dir, file_name);
-        std::fs::copy(path, out_file).unwrap();
+        std::fs::write(out_file, file.contents());
     }
 
     view_imports.extend(builtin_imports);
