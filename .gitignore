@@ -3,3 +3,4 @@ index.html
 output/
 node_modules/
 *.node
+package/
