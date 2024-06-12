@@ -1,5 +1,3 @@
-import { ref, watch, provide } from 'vue';
-
 export default {
   name: "SwiftCommon",
   props: ['padding', 'buttonStyle'],

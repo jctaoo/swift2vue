@@ -5,6 +5,7 @@ mod paser;
 mod template;
 mod utils;
 mod view;
+mod bundler;
 use napi_derive::napi;
 
 use include_dir::{include_dir, Dir};
@@ -60,7 +61,9 @@ fn generate(source: String, outdir: String, verbose: Option<bool>) {
 
     let mut view_imports = Vec::new();
     let mut builtin_imports = Vec::new();
-    let mut index_template = String::new();
+
+    let temp_dir = out_dir.join("temp");
+    std::fs::create_dir(&temp_dir).unwrap();
 
     // add runtime dir's content to view_imports and copy to output dir
     for file in RUNTIME_DIR.files() {
@@ -70,7 +73,7 @@ fn generate(source: String, outdir: String, verbose: Option<bool>) {
 
         builtin_imports.push(base_name.clone());
 
-        let out_file = format!("{}/{}", out_dir.display(), file_name);
+        let out_file = format!("{}/{}", temp_dir.display(), file_name);
         std::fs::write(out_file, file.contents());
     }
 
@@ -84,7 +87,7 @@ fn generate(source: String, outdir: String, verbose: Option<bool>) {
             let view = view::ViewParser::from_struct(st, source.clone());
             let cmp_code = view.generate_component_code(builtin_imports.clone());
 
-            let file_name = format!("{}/{}.js", out_dir.display(), st_name);
+            let file_name = format!("{}/{}.js", temp_dir.display(), st_name);
             std::fs::write(file_name, cmp_code).unwrap();
 
             view_imports.push(st_name);
@@ -99,30 +102,35 @@ fn generate(source: String, outdir: String, verbose: Option<bool>) {
             let mut view = view::ViewParser::from_struct(transformed, source.clone());
             let template = view.generate_template();
 
-            index_template = template;
+            let mut imports = view_imports.clone();
+            imports.extend(builtin_imports.clone());
+
+            let app_js = template::generate_app_js(imports, template);
+
+            let file_name = format!("{}/{}.js", temp_dir.display(), "app");
+            std::fs::write(file_name, app_js).unwrap();
         }
     }
 
     // copy styles
     let mut styles: Vec<String> = Vec::new();
-    let styles_out_dir = format!("{}/styles", out_dir.display());
-
-    std::fs::create_dir(&styles_out_dir).unwrap();
 
     for file in STYLES_DIR.files() {
-        let path = file.path();
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-        let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
-
-        styles.push(base_name.clone());
-
-        let out_file = format!("{}/{}", styles_out_dir, file_name);
-        std::fs::write(out_file, file.contents());
+        let code = file.contents_utf8().unwrap().to_string();
+        styles.push(code);
     }
 
-    view_imports.extend(builtin_imports);
+    // do bundle
+    let app_js_path = temp_dir.join("app.js");
+    let code = bundler::bundle(app_js_path.as_path(), true, false);
 
-    let index_html = template::generate_template_html(view_imports, styles, index_template);
+    // clear temp dir
+    std::fs::remove_dir_all(temp_dir).unwrap();
+
+    // generate html
+    let index_html = template::generate_template_html(styles, code);
+    println!("index.html generated ({}kb)", index_html.len() / 1024);
+
     let file_name = format!("{}/index.html", out_dir.display());
     std::fs::write(file_name, index_html).unwrap();
 }

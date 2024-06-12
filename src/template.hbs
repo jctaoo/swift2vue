@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>swift2vue</title>
     {{#each styles}}
-    <link rel="stylesheet" href="./styles/{{this}}.css" />
+    <style>
+      {{{this}}}
+    </style>
     {{/each}}
     <script type="importmap">
       {
@@ -19,23 +21,8 @@
   <body>
     <div id="app"></div>
     <script type="module">
-      import { createApp } from 'vue'
-      {{#each imports}}
-      import {{this}} from './{{this}}.js'
-      {{/each}}
-
-      window.print = console.log;
-
-      createApp({
-        components: {
-          {{#each imports}}
-          {{this}},
-          {{/each}}
-        },
-        template: `
-          {{{ index_template }}}
-        `
-      }).mount('#app')
+      import {createApp, ref, provide, inject, watch} from "vue";
+      {{{ script }}}
     </script>
   </body>
 </html>

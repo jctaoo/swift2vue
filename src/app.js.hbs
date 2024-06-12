@@ -1,0 +1,16 @@
+{{#each imports}}
+import {{this}} from './{{this}}.js'
+{{/each}}
+
+window.print = console.log;
+
+createApp({
+  components: {
+    {{#each imports}}
+    {{this}},
+    {{/each}}
+  },
+  template: `
+    {{{ index_template }}}
+  `
+}).mount('#app')

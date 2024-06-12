@@ -1,5 +1,4 @@
 import SwiftCommon from "./SwiftCommon.js";
-import { inject } from 'vue';
 
 function getButtonStyleClass(buttonStyle) {
   if (buttonStyle.endsWith('()')) {

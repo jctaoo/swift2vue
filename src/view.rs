@@ -202,7 +202,7 @@ impl<'a> ViewParser<'a> {
         let exported = exported_identifier.join(", ");
         let exported_code = format!("{:indent$}return {{ {} }};", "", exported, indent = 8);
 
-        return defs + "\n" + &exported_code;
+        format!("{}\n{}", defs, exported_code)
     }
 
     pub fn generate_component_code(mut self, builtin: Vec<String>) -> String {
@@ -232,7 +232,6 @@ impl<'a> ViewParser<'a> {
 
         format!(
             r#"
-import {{ ref }} from 'vue'
 {builtin_imports}
 
 export default {{
