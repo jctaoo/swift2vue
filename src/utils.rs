@@ -74,3 +74,15 @@ pub fn log_node_tree(node: &tree_sitter::Node, level: u32, source: &String) {
     log_node_tree(&node.child(i).unwrap(), level + 1, source);
   }
 }
+
+pub fn find_first_simple_identifier(node: &tree_sitter::Node, source: &String) -> Option<String> {
+  for i in 0..node.child_count() {
+    let child = node.child(i).unwrap();
+    if child.kind() == "simple_identifier" {
+      return Some(child.utf8_text(source.as_bytes()).unwrap().to_string());
+    }
+    return find_first_simple_identifier(&child, source);
+  }
+
+  None
+}

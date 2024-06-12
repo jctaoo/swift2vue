@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use id_tree::{InsertBehavior, NodeId, Tree, TreeBuilder};
 
 #[allow(unused)]
+use crate::utils::log_node;
+#[allow(unused)]
 use crate::{
     paser::{StructMember},
     utils::{log_node_tree, prettify_xml},
@@ -43,11 +45,11 @@ pub struct ViewParser<'a> {
 
     in_call_expression: usize,
 
-    /// realted call suffix node
+    /// related call suffix node
     navigation_expression_level: Vec<tree_sitter::Node<'a>>,
     navigation_component_node_id: Option<usize>,
 
-    ignroe_nodes: Vec<tree_sitter::Node<'a>>,
+    ignore_nodes: Vec<tree_sitter::Node<'a>>,
     id_to_tree_id: HashMap<usize, NodeId>,
 
     parent_node_id: Option<NodeId>,
@@ -62,7 +64,7 @@ impl<'a> ViewParser<'a> {
             in_call_expression: 0,
             navigation_expression_level: vec![],
             parent_node_id: None,
-            ignroe_nodes: vec![],
+            ignore_nodes: vec![],
             id_to_tree_id: HashMap::new(),
             navigation_component_node_id: None,
         }
@@ -121,7 +123,13 @@ impl<'a> ViewParser<'a> {
                     }
                 }
                 _ => {
-                    code.push_str(child_code);
+                    // TODO: avoid hardcode
+                    // [Item(title: "A"), Item(title: "B")] --> [{ title: "A" }, { title: "B" }]
+                    // using regex
+                    let regex = regex::Regex::new(r#"(\w+)\(([^()]+:[^)]+)\)"#).unwrap();
+                    let child_code = regex.replace_all(&child_code, r#"{ $2 }"#).to_string();
+
+                    code.push_str(&child_code);
                     code.push_str("\n");
                 }
             }
@@ -132,6 +140,21 @@ impl<'a> ViewParser<'a> {
         // try handle this using regex
 
         code.to_string()
+    }
+
+    fn handle_member_expression(&self, node: &tree_sitter::Node) -> String {
+        // TODO: avoid hardcode
+        if node.kind() == "array_literal" {
+            // [Item(title: "A"), Item(title: "B")] --> [{ title: "A" }, { title: "B" }]
+            // using regex
+            // TODO: handle sub struct, 目前直接丢弃掉 Item 定义
+            let code = node.utf8_text(self.source.as_bytes()).unwrap().to_string();
+            let regex = regex::Regex::new(r#"(\w+)\(([^()]+:[^)]+)\)"#).unwrap();
+            let code = regex.replace_all(&code, r#"{ $2 }"#).to_string();
+            return code;
+        }
+
+        return node.utf8_text(self.source.as_bytes()).unwrap().to_string();
     }
 
     fn generate_setup_code(&self) -> String {
@@ -151,15 +174,27 @@ impl<'a> ViewParser<'a> {
                 StructMember::Property { node, modifier } => {
                     let var_name = key;
                     exported_identifier.push(var_name.clone());
-                    let var_code = node.utf8_text(self.source.as_bytes()).unwrap();
+
+                    let ref_literal = ["line_string_literal", "integer_literal"];
 
                     if modifier == &Some("State".to_string()) {
-                        format!(
-                            "const {var_name} = ref({var_code});",
-                            var_name = var_name,
-                            var_code = var_code
-                        )
+                        if ref_literal.contains(&node.kind()) {
+                            let var_code = node.utf8_text(self.source.as_bytes()).unwrap();
+                            format!(
+                                "const {var_name} = ref({var_code});",
+                                var_name = var_name,
+                                var_code = var_code
+                            )
+                        } else {
+                            let var_code = self.handle_member_expression(node);
+                            format!(
+                                "const {var_name} = reactive({var_code});",
+                                var_name = var_name,
+                                var_code = var_code
+                            )
+                        }
                     } else {
+                        let var_code = node.utf8_text(self.source.as_bytes()).unwrap();
                         format!(
                             "const {var_name} = {var_code};",
                             var_name = var_name,
@@ -325,6 +360,10 @@ export default {{
     fn handle_node(&mut self, cursor: &mut tree_sitter::TreeCursor<'a>) -> bool {
         let node = cursor.node();
 
+        if node.kind() == "comment" {
+            return false;
+        }
+
         if node.kind() == "call_expression" {
             self.in_call_expression += 1;
 
@@ -377,15 +416,15 @@ export default {{
             }
         }
 
-        if node.kind() == "navigation_expression" {
+        if node.kind() == "navigation_expression" && node.parent().unwrap().kind() == "call_expression" {
             let related_call_suffix = node.next_sibling().unwrap();
             assert_eq!(related_call_suffix.kind(), "call_suffix");
             self.navigation_expression_level.push(related_call_suffix);
         }
 
-        if node.kind() == "navigation_suffix" {
+        if node.kind() == "navigation_suffix" && node.parent().unwrap().parent().unwrap().kind() == "call_expression" {
             let last_navigation = self.navigation_expression_level.pop().unwrap();
-            self.ignroe_nodes.push(last_navigation);
+            self.ignore_nodes.push(last_navigation);
 
             let call_suffix_identifier = node.child(1).unwrap();
             let call_suffix_name = call_suffix_identifier.utf8_text(self.source.as_bytes()).unwrap();
@@ -393,7 +432,8 @@ export default {{
             let args_node = last_navigation.child(0).unwrap();
 
             // TODO: only support one arg for now
-            let arg_node = if args_node.child_count() > 2 {
+            // TODO: no handling of lambda_literal for now, it's usually for children
+            let arg_node = if args_node.child_count() > 2 && args_node.kind() != "lambda_literal" {
                 Some(args_node.child(1).unwrap().child(0).unwrap())
             } else {
                 None
@@ -426,7 +466,7 @@ export default {{
         }
 
         if node.kind() == "call_suffix" {
-            if self.ignroe_nodes.contains(&node) {
+            if self.ignore_nodes.contains(&node) {
                 return false;
             }
         }

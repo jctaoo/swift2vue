@@ -6,6 +6,7 @@ mod template;
 mod utils;
 mod view;
 mod bundler;
+
 use napi_derive::napi;
 
 use include_dir::{include_dir, Dir};
@@ -15,11 +16,10 @@ static STYLES_DIR: Dir = include_dir!("./styles");
 
 #[allow(unused)]
 #[napi]
-fn generate(source: String, outdir: String, verbose: Option<bool>) {
+pub fn generate(source: String, outdir: String, verbose: bool) {
     use tree_sitter::Parser;
 
     let lang = tree_sitter_swift::language();
-    let verbose = verbose.unwrap_or(false);
 
     let mut parser = Parser::new();
     parser
@@ -125,7 +125,7 @@ fn generate(source: String, outdir: String, verbose: Option<bool>) {
     let code = bundler::bundle(app_js_path.as_path(), true, false);
 
     // clear temp dir
-    std::fs::remove_dir_all(temp_dir).unwrap();
+    // std::fs::remove_dir_all(temp_dir).unwrap();
 
     // generate html
     let index_html = template::generate_template_html(styles, code);

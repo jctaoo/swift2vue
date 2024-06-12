@@ -4,6 +4,9 @@ import {{this}} from './{{this}}.js'
 
 window.print = console.log;
 
+// TODO: using new type SwiftArray
+Array.prototype.append = Array.prototype.push;
+
 createApp({
   components: {
     {{#each imports}}

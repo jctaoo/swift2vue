@@ -29,6 +29,8 @@ pub struct State<'a> {
     pub struct_list: Vec<Rc<RefCell<StructInfo<'a>>>>,
     current_struct: Option<Rc<RefCell<StructInfo<'a>>>>,
     pub verbose: bool,
+
+    first_level_struct: Option<Rc<RefCell<StructInfo<'a>>>>,
 }
 
 impl<'a> State<'a> {
@@ -154,9 +156,6 @@ impl<'a> State<'a> {
             log_node(&node, cursor.depth(), &self.source);
         }
 
-        if self.struct_def_level > 0 {
-            return self.handle_struct_nodes(cursor);
-        }
 
         if node.kind() == "class_declaration" {
             self.struct_def_level += 1;
@@ -165,6 +164,14 @@ impl<'a> State<'a> {
             self.struct_list.push(Rc::new(RefCell::new(struct_info)));
             self.current_struct = self.struct_list.last().cloned();
 
+            if self.struct_def_level == 1 {
+                self.first_level_struct = self.current_struct.clone();
+            }
+
+            return self.handle_struct_nodes(cursor);
+        }
+
+        if self.struct_def_level > 0 {
             return self.handle_struct_nodes(cursor);
         }
 
@@ -179,8 +186,9 @@ impl<'a> State<'a> {
 
             if self.struct_def_level == 0 {
                 self.current_struct = None;
+                self.first_level_struct = None;
             } else {
-                self.current_struct = self.struct_list.first().cloned();
+                self.current_struct = self.first_level_struct.clone();
             }
         }
     }

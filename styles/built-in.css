@@ -76,3 +76,11 @@ input.text-field {
     background-color: #e5e5ea;
   }
 }
+
+ul.list {
+  font-size: 17px;
+
+  & > li {
+    list-style-type: none;
+  }
+}
