@@ -125,7 +125,7 @@ pub fn generate(source: String, outdir: String, verbose: bool) {
     let code = bundler::bundle(app_js_path.as_path(), true, false);
 
     // clear temp dir
-    // std::fs::remove_dir_all(temp_dir).unwrap();
+    std::fs::remove_dir_all(temp_dir).unwrap();
 
     // generate html
     let index_html = template::generate_template_html(styles, code);
