@@ -19,6 +19,7 @@ permissions:
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
+      - fixtures/**
   pull_request: null
 
 concurrency:
