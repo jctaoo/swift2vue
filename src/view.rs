@@ -193,7 +193,7 @@ impl<'a> ViewParser<'a> {
         return node.utf8_text(self.source.as_bytes()).unwrap().to_string();
     }
 
-    fn generate_setup_code(&self) -> Result<String, ViewParseError> {
+    fn generate_setup_code(&self, runtimes: Vec<String>) -> Result<String, ViewParseError> {
         if self.struct_info.inheritance != Some("View".to_string()) {
             return Ok("".to_string());
         }
@@ -284,6 +284,8 @@ impl<'a> ViewParser<'a> {
             setup_code.push_str("\n");
         }
 
+        exported_identifier.extend(runtimes);
+
         let defs = setup_code.trim_end().to_string();
         let exported = exported_identifier.join(", ");
         let exported_code = format!("{:indent$}return {{ {} }};", "", exported, indent = 8);
@@ -302,13 +304,13 @@ impl<'a> ViewParser<'a> {
 
         format!(
             r#"
-            export default {{
-                setup() {{
-                }},
-                template: `{template_code}`
-            }}
+export default {{
+    setup() {{
+    }},
+    template: `{template_code}`
+}}
             "#
-        )
+        ).trim().to_string()
     }
 
     pub fn generate_component_code(&mut self, builtin: Vec<String>, views: Vec<String>) -> Result<String, ViewParseError> {
@@ -317,7 +319,7 @@ impl<'a> ViewParser<'a> {
         }
 
         let template_code = self.generate_template().replace("\n", "");
-        let setup_code = self.generate_setup_code()?;
+        let setup_code = self.generate_setup_code(builtin.clone())?;
 
         // example: my-component.js
         // import { ref } from 'vue'

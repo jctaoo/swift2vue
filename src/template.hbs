@@ -9,21 +9,16 @@
       {{{this}}}
     </style>
     {{/each}}
-    <script type="importmap">
-      {
-        "imports": {
-          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
-        }
-      }
-    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css"/>
     <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
-    {{!-- <script src="https://cdn.tailwindcss.com"></script> --}}
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/naive-ui"></script>
   </head>
   <body>
     <div id="app"></div>
     <script type="module">
-      import {createApp, ref, provide, inject, watch, reactive, computed, onMounted} from "vue";
+      // import {createApp, ref, provide, inject, watch, reactive, computed, onMounted} from "vue";
+      const {createApp, ref, provide, inject, watch, reactive, computed, onMounted} = Vue;
       {{{ script }}}
     </script>
   </body>

@@ -1,5 +1,8 @@
 #![allow(unused_imports)]
-use crate::utils::{find_first_simple_identifier, log_node_tree};
+use crate::{
+    common,
+    utils::{find_first_simple_identifier, log_node_tree},
+};
 
 ///! Note that child is a special key, means child str content instead of modifier
 
@@ -47,7 +50,7 @@ fn compute_text(node: &tree_sitter::Node, source: &String) -> Option<(String, St
         return Some(("child".to_string(), code));
     }
 
-    log_node_tree(node, 0, source);
+    // log_node_tree(node, 0, source);
 
     None
 }
@@ -105,19 +108,51 @@ fn compute_color_picker(node: &tree_sitter::Node, source: &String) -> Option<(St
         }
     }
 
-    log_node_tree(node, 0, source);
+    // log_node_tree(node, 0, source);
 
     None
 }
 
+fn compute_date_picker(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    let arg_node = node.child(0).unwrap();
+    if arg_node.kind() == "line_string_literal" {
+        let content = compute_line_string_literal_for_str_child(&arg_node, source);
+        return Some(("child".to_string(), content));
+    };
 
-fn common_compute(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    // log_node_tree(node, 0, source);
+
+    None
+}
+
+lazy_static::lazy_static!(
+    static ref COMPONENT_CONTEXT: std::collections::HashMap<&'static str, (&'static str, &'static str)> = {
+        let mut m = std::collections::HashMap::new();
+        m.insert("DatePicker", ("displayedComponents", "DatePickerComponents"));
+        m
+    };
+);
+
+
+fn common_compute(
+    node: &tree_sitter::Node,
+    source: &String,
+    tag: String,
+) -> Option<(String, String)> {
     let arg_node = node.child(0).unwrap();
     if arg_node.kind() == "value_argument_label" {
         let value_node = node.child(2).unwrap();
         let arg_content = arg_node.utf8_text(source.as_bytes()).unwrap().to_string();
+        let mut fixed_ctx = tag.to_string();
 
+        // find fixed arg name
+        for (arg, fixed) in COMPONENT_CONTEXT.values() {
+            if arg_content == *arg {
+                fixed_ctx = fixed.to_string();
+            }
+        }
 
+        // TODO: using v-bind, 只要不是 string
         if value_node.kind() == "boolean_literal" {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
 
@@ -126,6 +161,10 @@ fn common_compute(node: &tree_sitter::Node, source: &String) -> Option<(String, 
             } else {
                 return None;
             }
+        } else if value_node.kind() == "array_literal" {
+            let code = common::array::array2js_call(&value_node, source, fixed_ctx);
+            let arg = format!("v-bind:{}", arg_content);
+            return Some((arg, code));
         } else if value_node.kind().ends_with("_literal") {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
             return Some((arg_content, value_content));
@@ -160,11 +199,12 @@ pub fn compute_modifier(
         "Button" => compute_button(node, source),
         "ForEach" => compute_foreach(node, source),
         "ColorPicker" => compute_color_picker(node, source),
+        "DatePicker" => compute_date_picker(node, source),
         _ => None,
     };
 
     if res.is_none() {
-        common_compute(node, source)
+        common_compute(node, source, tag)
     } else {
         res
     }

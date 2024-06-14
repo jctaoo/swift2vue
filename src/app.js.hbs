@@ -10,13 +10,29 @@ window.print = console.log;
 // TODO: using new type SwiftArray
 Array.prototype.append = Array.prototype.push;
 
-createApp({
+const app = createApp({
   components: {
     {{#each views}}
     {{this}},
     {{/each}}
   },
+  setup() {
+    const themeOverrides = {
+      common: {
+        primaryColor: '#007AFF',
+      },
+    }
+    return {
+      themeOverrides,
+      zhCN: naive.zhCN,
+      dateZhCN: naive.dateZhCN
+    }
+  },
   template: `
-    {{{ index_template }}}
+    <n-config-provider :theme-overrides="themeOverrides" :locale="zhCN" :date-locale="dateZhCN">
+      {{{ index_template }}}
+    </n-config-provider>
   `
-}).mount('#app')
+})
+app.use(naive)
+app.mount('#app')

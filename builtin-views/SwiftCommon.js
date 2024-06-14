@@ -1,6 +1,6 @@
 export default {
   name: "SwiftCommon",
-  props: ['padding', 'buttonStyle'],
+  props: ['padding', 'buttonStyle', 'datePickerStyle'],
   setup(props) {
     const slotRef = ref();
 
@@ -13,11 +13,19 @@ export default {
       paddingSize = parseInt(props.padding);
     }
 
+    // ======= styles =======
     if (typeof props.buttonStyle === 'string') {
       provide('buttonStyle', props.buttonStyle);
     } else {
       provide('buttonStyle', 'default');
     }
+
+    if (typeof props.datePickerStyle === 'string') {
+      provide('datePickerStyle', props.datePickerStyle);
+    } else {
+      provide('datePickerStyle', 'default');
+    }
+    // ======= styles =======
 
     // watch slotRef
     watch(slotRef, (slot) => {

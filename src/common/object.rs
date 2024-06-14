@@ -158,6 +158,7 @@ impl State {
 /// SwiftColor("sRGB", {red: 0.98, green: 0.9, blue: 0.2})
 #[allow(dead_code)]
 pub fn callexp2object(node: &tree_sitter::Node, source: &String) -> String {
+    assert_eq!(node.kind(), "call_expression");
     let mut state = State::default();
     state.source = source.clone();
     state.collect(node);
