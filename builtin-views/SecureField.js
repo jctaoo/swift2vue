@@ -2,7 +2,7 @@ import SwiftCommon from "./SwiftCommon.js";
 
 export default {
   components: { SwiftCommon },
-  name: "TextField",
+  name: "SecureField",
   props: ['text'],
   emits: ['update:text'],
   setup(props, { emit }) {
@@ -14,9 +14,9 @@ export default {
   },
   template: `<SwiftCommon>
     <template #child="{ setRef }">
-      <label class="text-field built-in" :ref="(el) => setRef(el)">
+      <label class="text-field secure-filed built-in" :ref="(el) => setRef(el)">
         <slot></slot>
-        <input type="text" v-model="text" />
+        <input type="password" v-model="text" />
       </label>
     </template>
   </SwiftCommon>`

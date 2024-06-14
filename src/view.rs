@@ -534,7 +534,7 @@ export default {{
             self.ignore_nodes.push(last_navigation);
 
             let call_suffix_identifier = node.child(1).unwrap();
-            let call_suffix_name = call_suffix_identifier
+            let mut call_suffix_name = call_suffix_identifier
                 .utf8_text(self.source.as_bytes())
                 .unwrap();
 
@@ -543,7 +543,13 @@ export default {{
             // TODO: only support one arg for now
             // TODO: no handling of lambda_literal for now, it's usually for children
             let arg_node = if args_node.child_count() > 2 && args_node.kind() != "lambda_literal" {
-                Some(args_node.child(1).unwrap().child(0).unwrap())
+                let node = args_node.child(1).unwrap();
+                let value_node = node.child(0).unwrap();
+                if node.child(0).unwrap().kind() == "value_argument_label" {
+                    Some(value_node.next_sibling().unwrap().next_sibling().unwrap())
+                } else {
+                    Some(value_node)
+                }
             } else {
                 None
             };
@@ -561,6 +567,11 @@ export default {{
             } else {
                 ""
             };
+
+            // TODO: avoid hardcode
+            if call_suffix_name == "onTapGesture" {
+                call_suffix_name = "@click";
+            }
 
             // TODO: ignroe contextMenu for now
             if call_suffix_name != "contextMenu" {

@@ -55,6 +55,16 @@ fn compute_text(node: &tree_sitter::Node, source: &String) -> Option<(String, St
     None
 }
 
+fn compute_fields(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    let arg_node = node.child(0).unwrap();
+    if arg_node.kind() == "line_string_literal" {
+        let content = compute_line_string_literal_for_str_child(&arg_node, source);
+        return Some(("child".to_string(), content));
+    };
+
+    None
+}
+
 fn compute_button(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
     let arg_node = node.child(0).unwrap();
     if arg_node.kind() == "line_string_literal" {
@@ -226,6 +236,8 @@ pub fn compute_modifier(
         "DatePicker" => compute_date_picker(node, source),
         "DisclosureGroup" => compute_disclosure_group(node, source),
         "Toggle" => compute_toggle(node, source),
+        "TextField" => compute_fields(node, source),
+        "SecureField" => compute_fields(node, source),
         _ => None,
     };
 
