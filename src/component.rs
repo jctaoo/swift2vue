@@ -86,14 +86,59 @@ fn compute_foreach(node: &tree_sitter::Node, source: &String) -> Option<(String,
     None
 }
 
+fn compute_color_picker(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    let arg_node = node.child(0).unwrap();
+    if arg_node.kind() == "line_string_literal" {
+        let content = compute_line_string_literal_for_str_child(&arg_node, source);
+        return Some(("child".to_string(), content));
+    };
+
+    // TODO: go to common
+    if arg_node.kind() == "value_argument_label" {
+        let value_node = node.child(2).unwrap();
+        let arg_content = arg_node.utf8_text(source.as_bytes()).unwrap().to_string();
+        let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
+
+        if arg_content == "supportsOpacity" {
+            let arg_content = format!("v-bind:{}", arg_content);
+            return Some((arg_content, value_content));
+        }
+    }
+
+    log_node_tree(node, 0, source);
+
+    None
+}
+
+
 fn common_compute(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
     let arg_node = node.child(0).unwrap();
     if arg_node.kind() == "value_argument_label" {
         let value_node = node.child(2).unwrap();
         let arg_content = arg_node.utf8_text(source.as_bytes()).unwrap().to_string();
 
-        if arg_node.kind().ends_with("_literal") {
+
+        if value_node.kind() == "boolean_literal" {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
+
+            if value_content == "true" {
+                return Some((arg_content, "".to_string()));
+            } else {
+                return None;
+            }
+        } else if value_node.kind().ends_with("_literal") {
+            let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
+            return Some((arg_content, value_content));
+        } else if value_node.kind() == "simple_identifier" {
+            let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
+
+            if value_content.starts_with("$") {
+                let name_without_prefix = value_content.trim_start_matches("$");
+                let arg_content = format!("v-model:{}", arg_content);
+                return Some((arg_content, name_without_prefix.to_string()));
+            }
+
+            let arg_content = format!("v-bind:{}", arg_content);
             return Some((arg_content, value_content));
         } else {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
@@ -114,6 +159,7 @@ pub fn compute_modifier(
         "Text" => compute_text(node, source),
         "Button" => compute_button(node, source),
         "ForEach" => compute_foreach(node, source),
+        "ColorPicker" => compute_color_picker(node, source),
         _ => None,
     };
 

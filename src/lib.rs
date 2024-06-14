@@ -1,16 +1,19 @@
 use paser::State;
 
+mod bundler;
+mod common;
 mod component;
 mod paser;
 mod template;
 mod utils;
 mod view;
-mod bundler;
 
 use napi_derive::napi;
 
+use colored::Colorize;
 use include_dir::{include_dir, Dir};
 
+static BUILTIN_VIEWS_DIR: Dir = include_dir!("./builtin-views");
 static RUNTIME_DIR: Dir = include_dir!("./runtime");
 static STYLES_DIR: Dir = include_dir!("./styles");
 
@@ -60,18 +63,31 @@ pub fn generate(source: String, outdir: String, verbose: bool) {
     std::fs::create_dir(out_dir).unwrap();
 
     let mut view_imports = Vec::new();
-    let mut builtin_imports = Vec::new();
+    let mut builtin_view_imports = Vec::new();
+    let mut runtime_imports = Vec::new();
+    let mut error_structs = Vec::new();
 
     let temp_dir = out_dir.join("temp");
     std::fs::create_dir(&temp_dir).unwrap();
 
     // add runtime dir's content to view_imports and copy to output dir
+    for file in BUILTIN_VIEWS_DIR.files() {
+        let path = file.path();
+        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+        let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
+
+        builtin_view_imports.push(base_name.clone());
+
+        let out_file = format!("{}/{}", temp_dir.display(), file_name);
+        std::fs::write(out_file, file.contents());
+    }
+
     for file in RUNTIME_DIR.files() {
         let path = file.path();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
         let base_name = path.file_stem().unwrap().to_str().unwrap().to_string();
 
-        builtin_imports.push(base_name.clone());
+        runtime_imports.push(base_name.clone());
 
         let out_file = format!("{}/{}", temp_dir.display(), file_name);
         std::fs::write(out_file, file.contents());
@@ -84,28 +100,52 @@ pub fn generate(source: String, outdir: String, verbose: bool) {
         let st_name = st.name.clone();
 
         if st.inheritance == Some("View".to_string()) {
-            let view = view::ViewParser::from_struct(st, source.clone());
-            let cmp_code = view.generate_component_code(builtin_imports.clone());
+            let mut view = view::ViewParser::from_struct(st, source.clone());
+            let cmp_code =
+                view.generate_component_code(runtime_imports.clone(), builtin_view_imports.clone());
 
-            let file_name = format!("{}/{}.js", temp_dir.display(), st_name);
-            std::fs::write(file_name, cmp_code).unwrap();
+            match cmp_code {
+                Ok(cmp_code) => {
+                    let file_name = format!("{}/{}.js", temp_dir.display(), st_name);
+                    std::fs::write(file_name, cmp_code).unwrap();
 
-            view_imports.push(st_name);
+                    view_imports.push(st_name);
+                }
+                Err(e) => {
+                    error_structs.push(st_name.clone());
+
+                    println!("{}", e.message.red());
+                    println!("{}", format!("位于 {} 行, {} 列:", e.row, e.col).red());
+                    println!("{}", e.node_code.red());
+
+                    let cmp_code = view.generate_empty_component();
+                    let file_name = format!("{}/{}.js", temp_dir.display(), st_name);
+                    std::fs::write(file_name, cmp_code).unwrap();
+
+                    view_imports.push(st_name);
+                }
+            }
         } else if st.inheritance == Some("PreviewProvider".to_string()) {
             let mut transformed = st.clone();
             transformed.inheritance = Some("View".to_string());
 
-            let previews = transformed.members.get("previews").expect("No previews found");
-            transformed.members.insert("body".to_string(), previews.clone());
+            let previews = transformed
+                .members
+                .get("previews")
+                .expect("No previews found");
+            transformed
+                .members
+                .insert("body".to_string(), previews.clone());
             transformed.members.remove("previews");
 
             let mut view = view::ViewParser::from_struct(transformed, source.clone());
             let template = view.generate_template();
 
-            let mut imports = view_imports.clone();
-            imports.extend(builtin_imports.clone());
+            let mut views_imports = view_imports.clone();
+            views_imports.extend(builtin_view_imports.clone());
 
-            let app_js = template::generate_app_js(imports, template);
+            let app_js =
+                template::generate_app_js(runtime_imports.clone(), views_imports, template);
 
             let file_name = format!("{}/{}.js", temp_dir.display(), "app");
             std::fs::write(file_name, app_js).unwrap();
@@ -125,7 +165,7 @@ pub fn generate(source: String, outdir: String, verbose: bool) {
     let code = bundler::bundle(app_js_path.as_path(), true, false);
 
     // clear temp dir
-    std::fs::remove_dir_all(temp_dir).unwrap();
+    // std::fs::remove_dir_all(temp_dir).unwrap();
 
     // generate html
     let index_html = template::generate_template_html(styles, code);
@@ -133,4 +173,8 @@ pub fn generate(source: String, outdir: String, verbose: bool) {
 
     let file_name = format!("{}/index.html", out_dir.display());
     std::fs::write(file_name, index_html).unwrap();
+
+    if !error_structs.is_empty() {
+        println!("{}: {:?}", "Error structs".red(), error_structs);
+    }
 }

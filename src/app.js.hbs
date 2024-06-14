@@ -1,6 +1,9 @@
 {{#each imports}}
 import {{this}} from './{{this}}.js'
 {{/each}}
+{{#each views}}
+import {{this}} from './{{this}}.js'
+{{/each}}
 
 window.print = console.log;
 
@@ -9,7 +12,7 @@ Array.prototype.append = Array.prototype.push;
 
 createApp({
   components: {
-    {{#each imports}}
+    {{#each views}}
     {{this}},
     {{/each}}
   },

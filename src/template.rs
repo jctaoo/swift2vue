@@ -14,11 +14,12 @@ pub fn generate_template_html(styles: Vec<String>, script: String) -> String {
   reg.render_template(TEMPLATE, &context).unwrap()
 }
 
-pub fn generate_app_js(imports: Vec<String>, index_template: String) -> String {
+pub fn generate_app_js(imports: Vec<String>, views: Vec<String>, index_template: String) -> String {
   let reg = Handlebars::new();
 
   let context = serde_json::json!({
     "imports": imports,
+    "views": views,
     "index_template": index_template
   });
 

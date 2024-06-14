@@ -75,6 +75,20 @@ pub fn log_node_tree(node: &tree_sitter::Node, level: u32, source: &String) {
   }
 }
 
+pub fn find_first_node<'a>(node: tree_sitter::Node<'a>, kind: &str, source: &String) -> Option<tree_sitter::Node<'a>> {
+  for i in 0..node.child_count() {
+    let child = node.child(i).unwrap();
+    if child.kind() == kind {
+      return Some(child);
+    }
+    if let Some(r) = find_first_node(child, kind, source) {
+      return Some(r);
+    }
+  }
+
+  None
+}
+
 pub fn find_first_simple_identifier(node: &tree_sitter::Node, source: &String) -> Option<String> {
   for i in 0..node.child_count() {
     let child = node.child(i).unwrap();

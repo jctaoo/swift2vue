@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tree_sitter::Node;
 
-use crate::utils::log_node;
+use crate::utils::{find_first_node, log_node};
 #[allow(unused)]
 use crate::utils::log_node_tree;
 
@@ -82,9 +82,13 @@ impl<'a> State<'a> {
                             .to_string();
                     }
                 } else if child.kind() == "computed_property" {
-                    let call_node = child.child(1).unwrap().child(0).unwrap();
-                    if call_node.kind() == "call_expression" {
-                        var_node = Some(call_node);
+                    if let Some(statements) = find_first_node(child.clone(), "statements", &self.source) {
+                        // log_node_tree(&statements, 0, &self.source);
+                        // TODO: 这里只处理了 computed_property 的第一个调用，对于 SwiftUI 足够了
+                        let call_node = statements.child(0).unwrap();
+                        if call_node.kind() == "call_expression" {
+                            var_node = Some(call_node);
+                        }
                     }
                 } else if child
                     .prev_sibling()

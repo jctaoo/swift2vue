@@ -2,13 +2,36 @@ use std::collections::HashMap;
 
 use id_tree::{InsertBehavior, NodeId, Tree, TreeBuilder};
 
+use crate::common;
 #[allow(unused)]
 use crate::utils::log_node;
 #[allow(unused)]
 use crate::{
-    paser::{StructMember},
+    paser::StructMember,
     utils::{log_node_tree, prettify_xml},
 };
+
+#[derive(Debug)]
+pub struct ViewParseError {
+    pub message: String,
+    pub node_code: String,
+    pub row: usize,
+    pub col: usize,
+}
+
+impl ViewParseError {
+    pub fn new(message: String, node: &tree_sitter::Node, source: &String) -> Self {
+        let row = node.start_position().row;
+        let col = node.start_position().column;
+        let node_code = node.utf8_text(source.as_bytes()).unwrap().to_string();
+        Self {
+            message,
+            node_code,
+            row,
+            col,
+        }
+    }
+}
 
 #[derive(Debug)]
 struct ViewNode {
@@ -30,7 +53,15 @@ impl ViewNode {
         let mut attr_str = String::new();
 
         for (key, value) in self.modifier.iter() {
-            attr_str.push_str(&format!("{}=\"{}\" ", key, value));
+            if value.is_empty() {
+                attr_str.push_str(&format!("{} ", key));
+            } else {
+                attr_str.push_str(&format!("{}=\"{}\" ", key, value));
+            }
+        }
+
+        if !self.modifier.is_empty() {
+            attr_str.pop();
         }
 
         attr_str
@@ -72,6 +103,7 @@ impl<'a> ViewParser<'a> {
 }
 
 impl<'a> ViewParser<'a> {
+
     pub fn generate_template(&mut self) -> String {
         if self.struct_info.inheritance != Some("View".to_string()) {
             return "".to_string();
@@ -154,12 +186,16 @@ impl<'a> ViewParser<'a> {
             return code;
         }
 
+        if node.kind() == "call_expression" {
+            return common::object::callexp2object(node, &self.source);
+        }
+
         return node.utf8_text(self.source.as_bytes()).unwrap().to_string();
     }
 
-    fn generate_setup_code(&self) -> String {
+    fn generate_setup_code(&self) -> Result<String, ViewParseError> {
         if self.struct_info.inheritance != Some("View".to_string()) {
-            return "".to_string();
+            return Ok("".to_string());
         }
 
         let mut setup_code = String::new();
@@ -188,12 +224,27 @@ impl<'a> ViewParser<'a> {
                         } else {
                             let var_code = self.handle_member_expression(node);
                             format!(
-                                "const {var_name} = reactive({var_code});",
+                                // TODO: when to use ref? v-model not work with reactive
+                                "const {var_name} = ref({var_code});",
                                 var_name = var_name,
                                 var_code = var_code
                             )
                         }
                     } else {
+                        if node.kind() == "call_expression" {
+                            if let Some(first_child) = node.child(0) {
+                                if first_child.kind() == "lambda_literal" {
+                                    let parent_node = node.parent().unwrap();
+                                    let error = ViewParseError::new(
+                                        "目前不支持闭包属性".to_string(),
+                                        &parent_node,
+                                        &self.source,
+                                    );
+                                    return Err(error);
+                                }
+                            }
+                        }
+
                         let var_code = node.utf8_text(self.source.as_bytes()).unwrap();
                         format!(
                             "const {var_name} = {var_code};",
@@ -237,16 +288,36 @@ impl<'a> ViewParser<'a> {
         let exported = exported_identifier.join(", ");
         let exported_code = format!("{:indent$}return {{ {} }};", "", exported, indent = 8);
 
-        format!("{}\n{}", defs, exported_code)
+        Ok(format!("{}\n{}", defs, exported_code))
     }
 
-    pub fn generate_component_code(mut self, builtin: Vec<String>) -> String {
+
+    /// It's usually used for error component
+    pub fn generate_empty_component(self) -> String {
         if self.struct_info.inheritance != Some("View".to_string()) {
             return "".to_string();
         }
 
+        let template_code = "<div></div>";
+
+        format!(
+            r#"
+            export default {{
+                setup() {{
+                }},
+                template: `{template_code}`
+            }}
+            "#
+        )
+    }
+
+    pub fn generate_component_code(&mut self, builtin: Vec<String>, views: Vec<String>) -> Result<String, ViewParseError> {
+        if self.struct_info.inheritance != Some("View".to_string()) {
+            return Ok("".to_string());
+        }
+
         let template_code = self.generate_template().replace("\n", "");
-        let setup_code = self.generate_setup_code();
+        let setup_code = self.generate_setup_code()?;
 
         // example: my-component.js
         // import { ref } from 'vue'
@@ -263,11 +334,17 @@ impl<'a> ViewParser<'a> {
             .map(|name| format!("import {} from './{}.js'", name, name))
             .collect::<Vec<String>>()
             .join("\n");
-        let components = builtin.join(", ");
+        let view_imports = views
+            .iter()
+            .map(|name| format!("import {} from './{}.js'", name, name))
+            .collect::<Vec<String>>()
+            .join("\n");
+        let components = views.join(", ");
 
-        format!(
+        Ok(format!(
             r#"
 {builtin_imports}
+{view_imports}
 
 export default {{
     components: {{
@@ -281,7 +358,7 @@ export default {{
         "#
         )
         .trim()
-        .to_string()
+        .to_string())
     }
 
     /// generate html code from view tree
@@ -387,9 +464,11 @@ export default {{
                                         continue;
                                     }
 
-                                    if let Some((key, value)) =
-                                        crate::component::compute_modifier(tag.clone(), &arg_node, &self.source)
-                                    {
+                                    if let Some((key, value)) = crate::component::compute_modifier(
+                                        tag.clone(),
+                                        &arg_node,
+                                        &self.source,
+                                    ) {
                                         // println!("{}: {}", key, value);
                                         if key.as_str() == "child" {
                                             view_node.str_content = Some(value);
@@ -416,18 +495,24 @@ export default {{
             }
         }
 
-        if node.kind() == "navigation_expression" && node.parent().unwrap().kind() == "call_expression" {
+        if node.kind() == "navigation_expression"
+            && node.parent().unwrap().kind() == "call_expression"
+        {
             let related_call_suffix = node.next_sibling().unwrap();
             assert_eq!(related_call_suffix.kind(), "call_suffix");
             self.navigation_expression_level.push(related_call_suffix);
         }
 
-        if node.kind() == "navigation_suffix" && node.parent().unwrap().parent().unwrap().kind() == "call_expression" {
+        if node.kind() == "navigation_suffix"
+            && node.parent().unwrap().parent().unwrap().kind() == "call_expression"
+        {
             let last_navigation = self.navigation_expression_level.pop().unwrap();
             self.ignore_nodes.push(last_navigation);
 
             let call_suffix_identifier = node.child(1).unwrap();
-            let call_suffix_name = call_suffix_identifier.utf8_text(self.source.as_bytes()).unwrap();
+            let call_suffix_name = call_suffix_identifier
+                .utf8_text(self.source.as_bytes())
+                .unwrap();
 
             let args_node = last_navigation.child(0).unwrap();
 

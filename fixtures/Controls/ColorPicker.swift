@@ -21,7 +21,7 @@ struct BasicColorPicker: View {
             }
         }
     }
-    
+
     @State var bgColor =
         Color(.sRGB, red: 0.98, green: 0.9, blue: 0.2)
 }

@@ -84,3 +84,25 @@ ul.list {
     list-style-type: none;
   }
 }
+
+label.color-picker {
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: center;
+
+  & .clr-field > input {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  & .clr-field > button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+  }
+
+  & .clr-field {
+    height: 30px;
+  }
+}
