@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::utils::log_node_tree;
 
-use super::object::callexp2object;
+use super::object::callexp2object_with_context;
 
 #[derive(Debug)]
 enum ItemType {
@@ -15,6 +15,7 @@ enum ItemType {
 struct State {
     source: String,
     context: String,
+    obj_ctx: Vec<String>,
     args: Vec<ItemType>,
 
     in_root: bool,
@@ -36,7 +37,7 @@ impl State {
                     return;
                 }
                 "call_expression" => {
-                    let code = callexp2object(&node, &self.source);
+                    let code = callexp2object_with_context(&node, &self.source, self.obj_ctx.clone());
                     self.args.push(ItemType::Object { code });
                     return;
                 }
@@ -104,6 +105,19 @@ pub fn array2js_call(node: &tree_sitter::Node, source: &String, context: String)
     state.collect(node);
     state.generate()
 }
+
+#[allow(dead_code)]
+pub fn array2js_call_with_obj_context(node: &tree_sitter::Node, source: &String, context: String, obj_ctx: Vec<String>) -> String {
+    assert_eq!(node.kind(), "array_literal");
+    let mut state = State::default();
+    state.source = source.clone();
+    state.context = context;
+    state.obj_ctx = obj_ctx;
+    state.in_root = true;
+    state.collect(node);
+    state.generate()
+}
+
 
 #[cfg(test)]
 mod test {

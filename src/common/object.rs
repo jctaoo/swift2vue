@@ -68,6 +68,7 @@ struct State {
     source: String,
     args: Vec<ArgType>,
     name: String,
+    context: Vec<String>,
 }
 
 impl State {
@@ -96,7 +97,11 @@ impl State {
     }
 
     fn generate(mut self) -> String {
-        let name = format!("Swift{}", self.name);
+        let name = if !self.context.contains(&self.name) {
+            format!("Swift{}", self.name)
+        } else {
+            self.name.clone()
+        };
         let mut out = format!("{}(", name);
 
         // sort args, all value args first, then label args
@@ -162,6 +167,16 @@ pub fn callexp2object(node: &tree_sitter::Node, source: &String) -> String {
     let mut state = State::default();
     state.source = source.clone();
     state.collect(node);
+    state.generate()
+}
+
+#[allow(dead_code)]
+pub fn callexp2object_with_context(node: &tree_sitter::Node, source: &String, context: Vec<String>) -> String {
+    assert_eq!(node.kind(), "call_expression");
+    let mut state = State::default();
+    state.source = source.clone();
+    state.collect(node);
+    state.context = context;
     state.generate()
 }
 

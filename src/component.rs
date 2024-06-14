@@ -125,6 +125,30 @@ fn compute_date_picker(node: &tree_sitter::Node, source: &String) -> Option<(Str
     None
 }
 
+fn compute_disclosure_group(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    let arg_node = node.child(0).unwrap();
+    if arg_node.kind() == "line_string_literal" {
+        let content = compute_line_string_literal_for_str_child(&arg_node, source);
+        return Some(("title".to_string(), content));
+    };
+
+    // log_node_tree(node, 0, source);
+
+    None
+}
+
+fn compute_toggle(node: &tree_sitter::Node, source: &String) -> Option<(String, String)> {
+    let arg_node = node.child(0).unwrap();
+    if arg_node.kind() == "line_string_literal" {
+        let content = compute_line_string_literal_for_str_child(&arg_node, source);
+        return Some(("title".to_string(), content));
+    };
+
+    // log_node_tree(node, 0, source);
+
+    None
+}
+
 lazy_static::lazy_static!(
     static ref COMPONENT_CONTEXT: std::collections::HashMap<&'static str, (&'static str, &'static str)> = {
         let mut m = std::collections::HashMap::new();
@@ -168,7 +192,7 @@ fn common_compute(
         } else if value_node.kind().ends_with("_literal") {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
             return Some((arg_content, value_content));
-        } else if value_node.kind() == "simple_identifier" {
+        } else if value_node.kind() == "simple_identifier" || value_node.kind() == "navigation_expression" {
             let value_content = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
 
             if value_content.starts_with("$") {
@@ -200,6 +224,8 @@ pub fn compute_modifier(
         "ForEach" => compute_foreach(node, source),
         "ColorPicker" => compute_color_picker(node, source),
         "DatePicker" => compute_date_picker(node, source),
+        "DisclosureGroup" => compute_disclosure_group(node, source),
+        "Toggle" => compute_toggle(node, source),
         _ => None,
     };
 

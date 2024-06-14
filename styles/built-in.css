@@ -86,7 +86,7 @@ ul.list {
 }
 
 label.color-picker {
-  display: inline-flex;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: .5em;
@@ -109,7 +109,14 @@ label.color-picker {
 }
 
 label.date-picker {
-  display: inline-flex;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5em;
+}
+
+label.toggle {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: .5em;

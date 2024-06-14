@@ -15,11 +15,20 @@ pub enum StructMember<'a> {
     },
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct StructInfo<'a> {
     pub name: String,
+    pub source: String,
+    pub node: Node<'a>,
     pub members: HashMap<String, StructMember<'a>>,
     pub inheritance: Option<String>,
+    pub sub: Vec<Rc<RefCell<StructInfo<'a>>>>,
+}
+
+impl StructInfo<'_> {
+    pub fn sub_names(&self) -> Vec<String> {
+        self.sub.iter().map(|x| x.borrow().name.clone()).collect()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -160,16 +169,26 @@ impl<'a> State<'a> {
             log_node(&node, cursor.depth(), &self.source);
         }
 
-
         if node.kind() == "class_declaration" {
             self.struct_def_level += 1;
 
-            let struct_info = StructInfo::default();
-            self.struct_list.push(Rc::new(RefCell::new(struct_info)));
-            self.current_struct = self.struct_list.last().cloned();
+            let struct_info = StructInfo {
+                name: String::new(),
+                source: node.utf8_text(self.source.as_bytes()).unwrap().to_string(),
+                node,
+                members: HashMap::new(),
+                inheritance: None,
+                sub: Vec::new(),
+            };
 
             if self.struct_def_level == 1 {
+                self.struct_list.push(Rc::new(RefCell::new(struct_info)));
+                self.current_struct = self.struct_list.last().cloned();
                 self.first_level_struct = self.current_struct.clone();
+            } else {
+                let mut parent_struct = self.first_level_struct.as_ref().unwrap().borrow_mut();
+                parent_struct.sub.push(Rc::new(RefCell::new(struct_info)));
+                self.current_struct = parent_struct.sub.last().cloned();
             }
 
             return self.handle_struct_nodes(cursor);

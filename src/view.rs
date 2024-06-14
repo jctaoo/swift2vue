@@ -125,6 +125,7 @@ impl<'a> ViewParser<'a> {
         return self.generate_code_from_tree();
     }
 
+    /// 处理函数调用的转换
     fn handle_fn(&self, node: &tree_sitter::Node) -> String {
         let mut code = String::new();
         assert_eq!(node.kind(), "statements");
@@ -140,6 +141,7 @@ impl<'a> ViewParser<'a> {
                     if let Some(StructMember::Property { node: _, modifier }) =
                         self.struct_info.members.get(target)
                     {
+                        // 处理 vue3 ref
                         if modifier == &Some("State".to_string()) {
                             let target = format!("{}.value", target);
                             let op = child.child(1).unwrap();
@@ -174,20 +176,18 @@ impl<'a> ViewParser<'a> {
         code.to_string()
     }
 
+    /// 处理属性 = 符号的右边
     fn handle_member_expression(&self, node: &tree_sitter::Node) -> String {
         // TODO: avoid hardcode
         if node.kind() == "array_literal" {
-            // [Item(title: "A"), Item(title: "B")] --> [{ title: "A" }, { title: "B" }]
-            // using regex
-            // TODO: handle sub struct, 目前直接丢弃掉 Item 定义
-            let code = node.utf8_text(self.source.as_bytes()).unwrap().to_string();
-            let regex = regex::Regex::new(r#"(\w+)\(([^()]+:[^)]+)\)"#).unwrap();
-            let code = regex.replace_all(&code, r#"{ $2 }"#).to_string();
-            return code;
+            // TODO: 根据类型标注获得前缀表达式 context
+            let names = self.struct_info.sub_names();
+            return common::array::array2js_call_with_obj_context(node, &self.source, "".to_string(), names);
         }
 
         if node.kind() == "call_expression" {
-            return common::object::callexp2object(node, &self.source);
+            let names = self.struct_info.sub_names();
+            return common::object::callexp2object_with_context(node, &self.source, names);
         }
 
         return node.utf8_text(self.source.as_bytes()).unwrap().to_string();
@@ -223,9 +223,16 @@ impl<'a> ViewParser<'a> {
                             )
                         } else {
                             let var_code = self.handle_member_expression(node);
+
+                            let directive = if node.kind() == "array_literal" {
+                                "reactive"
+                            } else {
+                                "ref"
+                            };
+
                             format!(
                                 // TODO: when to use ref? v-model not work with reactive
-                                "const {var_name} = ref({var_code});",
+                                "const {var_name} = {directive}({var_code});",
                                 var_name = var_name,
                                 var_code = var_code
                             )
@@ -293,6 +300,17 @@ impl<'a> ViewParser<'a> {
         Ok(format!("{}\n{}", defs, exported_code))
     }
 
+    fn generate_sub_struct(&self) -> String {
+        let mut out = String::new();
+
+        for sub in self.struct_info.sub.iter() {
+            let code = common::model::date_model2js_fn(&sub.borrow().node, &self.source);
+            out.push_str(&code);
+            out.push_str("\n");
+        }
+
+        out.trim().to_string()
+    }
 
     /// It's usually used for error component
     pub fn generate_empty_component(self) -> String {
@@ -343,10 +361,14 @@ export default {{
             .join("\n");
         let components = views.join(", ");
 
+        let sub_struct_code = self.generate_sub_struct();
+
         Ok(format!(
             r#"
 {builtin_imports}
 {view_imports}
+
+{sub_struct_code}
 
 export default {{
     components: {{

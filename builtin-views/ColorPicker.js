@@ -12,6 +12,8 @@ import SwiftCommon from './SwiftCommon.js'
 // TODO: 在 output 中采用项目中差不多的文件结构
 import SwiftColor from './SwiftColor.js'
 
+// TODO: 使用 naive ui
+
 export default {
   components: { SwiftCommon },
   name: 'ColorPicker',

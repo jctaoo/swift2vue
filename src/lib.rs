@@ -14,6 +14,7 @@ use colored::Colorize;
 use include_dir::{include_dir, Dir};
 
 static BUILTIN_VIEWS_DIR: Dir = include_dir!("./builtin-views");
+
 static RUNTIME_DIR: Dir = include_dir!("./runtime");
 static STYLES_DIR: Dir = include_dir!("./styles");
 
